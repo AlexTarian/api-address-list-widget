@@ -1,0 +1,123 @@
+* { box-sizing: border-box; }
+
+:root {
+  --blue: #0047AB;
+  --blue-hover: #2269CD;
+  --red: #D7263D;
+  --red-hover: #ef3b52;
+  --border: #b9b9b9;
+  --muted: #666;
+  --bg-soft: #f6f8fb;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 16px;
+  color: #222;
+  background: #fff;
+}
+
+.widget {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.widget-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+
+h2 { margin: 0; font-size: 28px; color: var(--blue); }
+h3 { margin: 0; font-size: 18px; }
+p { margin: 6px 0 0; color: var(--muted); }
+
+.editor { margin-top: 18px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; align-items: end; }
+.full-width { grid-column: 1 / -1; }
+.small-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 18px; margin-top: 14px; align-items: end; }
+
+label { display: block; font-weight: 600; margin-bottom: 4px; }
+.optional { font-weight: 400; color: var(--muted); }
+.required { color: var(--red); margin-left: 2px; }
+
+input, select {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 14px;
+  background: #fff;
+}
+
+input:focus, select:focus { outline: 2px solid rgba(0, 71, 171, .18); border-color: var(--blue); }
+
+.mode-panel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #ddd;
+}
+
+.checkbox-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-weight: 600; }
+.checkbox-row input { width: auto; transform: scale(1.2); }
+
+.segmented-control { display: inline-flex; width: 100%; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+.segmented-control .segment { flex: 1; border-radius: 0; background: #fff; color: #333; border: 0; border-right: 1px solid var(--border); }
+.segmented-control .segment:last-child { border-right: 0; }
+.segmented-control .segment.active { background: var(--blue); color: #fff; }
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 20px;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+button:hover { background: var(--blue-hover); }
+button:disabled { opacity: .55; cursor: default; }
+
+.secondary-btn { background: #6b7280; }
+.secondary-btn:hover { background: #808792; }
+
+.action-row { display: flex; gap: 10px; margin-top: 18px; align-items: center; }
+
+.address-list-section { margin-top: 22px; border-top: 1px solid #ddd; padding-top: 16px; }
+.list-heading-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.count-badge { display: inline-flex; min-width: 26px; height: 26px; align-items: center; justify-content: center; border-radius: 999px; background: var(--bg-soft); color: var(--blue); font-weight: 700; }
+.address-list { max-height: 360px; overflow-y: auto; }
+
+.address-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  background: #fff;
+}
+.address-main { min-width: 0; }
+.address-title { font-size: 18px; font-weight: 700; color: var(--blue); overflow-wrap: anywhere; }
+.address-line { margin-top: 3px; font-size: 14px; }
+.address-details { margin-top: 5px; font-size: 13px; color: var(--muted); }
+.card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.edit-btn { background: #6b7280; padding: 7px 12px; }
+.edit-btn:hover { background: #808792; }
+.delete-btn { background: var(--red); padding: 7px 12px; font-size: 16px; border-radius: 999px; }
+.delete-btn:hover { background: var(--red-hover); }
+
+.empty-state { padding: 18px; border: 1px dashed #c7c7c7; border-radius: 10px; color: var(--muted); text-align: center; background: var(--bg-soft); }
+.error { color: var(--red); font-size: 13px; margin-top: 8px; min-height: 18px; }
+
+@media (max-width: 620px) {
+  body { padding: 8px; }
+  .widget { padding: 14px; }
+  .grid, .small-row { grid-template-columns: 1fr; }
+  .full-width { grid-column: auto; }
+  .address-card { align-items: flex-start; flex-direction: column; }
+  .card-actions { width: 100%; }
+  .card-actions button { flex: 1; }
+}
