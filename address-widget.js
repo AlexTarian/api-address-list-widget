@@ -1091,14 +1091,16 @@ function buildSubmissionValue() {
 }
 
 async function loadPrefillAfterCount() {
+  console.log("Attempting address prefill load...");
+
   if (prefillLoaded) {
+    console.log("Prefill already loaded.");
     return;
   }
 
-  const fieldId =
-    getSetting_(
-      "prefillFieldId"
-    );
+  const fieldId = getSetting_("prefillFieldId");
+
+  console.log("Configured prefillFieldId:", fieldId);
 
   if (!fieldId) {
     prefillLoaded = true;
@@ -1152,10 +1154,11 @@ async function loadPrefillAfterCount() {
 }
 
 async function continueToAddresses() {
-  const count =
-    Number(
-      fields.addressCountInput.value
-    );
+  console.log("ADDRESS NEXT CLICKED");
+
+  const count = Number(fields.addressCountInput.value);
+
+  console.log("Required address count:", count);
 
   if (
     !Number.isInteger(count) ||
@@ -1242,7 +1245,10 @@ function wireEvents() {
 }
 
 async function initializeWidget() {
+  console.log("ADDRESS WIDGET INITIALIZING");
+
   if (initialized) {
+    console.log("Address widget already initialized.");
     return;
   }
 
@@ -1251,13 +1257,16 @@ async function initializeWidget() {
   createCountStep();
   populateStates();
   configureMode();
-  setHousingType(
-    "Employer-owned"
-  );
+  setHousingType("Employer-owned");
   toggleOwnedBy();
   wireEvents();
   showCountStep();
   renderAddresses();
+
+  console.log("Address widget initialized.", {
+    mode: getMode(),
+    prefillFieldId: getSetting_("prefillFieldId")
+  });
 }
 
 JFCustomWidget.subscribe(
