@@ -75,7 +75,18 @@ const fields = {
 function updateWidgetHeight() {
   requestAnimationFrame(() => {
     try {
-      const height = Math.ceil(document.documentElement.scrollHeight);
+      const widgetHeight = fields.widgetRoot.getBoundingClientRect().height;
+
+      const bodyStyle = getComputedStyle(document.body);
+      const paddingTop = parseFloat(bodyStyle.paddingTop) || 0;
+      const paddingBottom = parseFloat(bodyStyle.paddingBottom) || 0;
+
+      const height = Math.ceil(
+        widgetHeight +
+        paddingTop +
+        paddingBottom
+      );
+
       JFCustomWidget.setHeight(height);
     } catch (err) {
       console.warn("Could not update widget height:", err);
