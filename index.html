@@ -58,11 +58,11 @@
       <div id="housingFields" class="mode-panel" hidden>
         <div class="small-row">
           <div>
-            <label class="compact-label">Type *</label>
-            <div class="segmented-control" role="group" aria-label="Housing type">
-              <button id="housingEmployerOwnedBtn" class="segment active" type="button">Employer-owned</button>
-              <button id="housingRentedBtn" class="segment" type="button">Rented</button>
-            </div>
+            <label class="sr-only" for="housingType">Housing Type</label>
+            <select id="housingType" aria-label="Housing Type">
+              <option value="Employer-owned">Employer-owned</option>
+              <option value="Rented">Rented</option>
+            </select>
           </div>
 
           <div>
