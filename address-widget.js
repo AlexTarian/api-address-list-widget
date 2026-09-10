@@ -3,7 +3,6 @@ let editingIndex = null;
 let initialized = false;
 let prefillLoaded = false;
 let housingType = "Employer-owned";
-let lastPrefillValue = "";
 
 const MODES = {
   housing: {
@@ -82,6 +81,7 @@ async function getFieldValueById_(fieldId) {
   return await new Promise(resolve => {
     try {
       JFCustomWidget.getFieldsValueById([cleanFieldId], response => {
+        console.log("getFieldsValueById response:", response);
         const data = Array.isArray(response?.data) ? response.data : [];
         const match = data.find(item => String(item?.selector) === cleanFieldId || String(item?.selector) === `input_${cleanFieldId}` || String(item?.selector).includes(cleanFieldId));
         resolve(String(match?.value ?? data[0]?.value ?? ""));
@@ -134,6 +134,8 @@ function normalizeCounty(value) {
 }
 
 async function refreshPrefill() {
+  if (prefillLoaded) return;
+
   const fieldId = getSetting_("prefillFieldId");
   if (!fieldId) return;
 
@@ -141,9 +143,6 @@ async function refreshPrefill() {
   const cleaned = clean_(raw);
 
   if (!cleaned) return;
-
-  // Don't import the exact same value twice.
-  if (cleaned === lastPrefillValue) return;
 
   try {
     const imported = parsePrefill(cleaned);
@@ -153,7 +152,6 @@ async function refreshPrefill() {
     addresses.length = 0;
     addresses.push(...imported);
 
-    lastPrefillValue = cleaned;
     prefillLoaded = true;
 
     renderAddresses();
@@ -486,48 +484,6 @@ function buildSubmissionValue() {
   return addresses.map(item => item.type === "housing" ? serializeHousing(item) : serializeWorksite(item)).join("\n");
 }
 
-async function loadPrefilledAddresses() {
-  if (prefillLoaded) return true;
-
-  const fieldId = getSetting_("prefillFieldId");
-  if (!fieldId) {
-    console.log("No prefillFieldId configured.");
-    return false;
-  }
-
-  const raw = await getFieldValueById_(fieldId);
-
-  if (!clean_(raw)) {
-    console.log("Prefill field exists but is currently empty. Will retry.");
-    return false;
-  }
-
-  try {
-    const imported = parsePrefill(raw);
-
-    if (!imported.length) {
-      console.warn("Prefill data was found, but no addresses could be parsed.");
-      return false;
-    }
-
-    addresses.length = 0;
-    addresses.push(...imported);
-
-    prefillLoaded = true;
-
-    renderAddresses();
-
-    console.log(`Loaded ${imported.length} prefilled address(es).`);
-    return true;
-  } catch (err) {
-    console.warn("Could not parse prefilled addresses:", err);
-    fields.globalError.textContent =
-      "Some prefilled addresses could not be loaded. Please review the address list carefully.";
-
-    return false;
-  }
-}
-
 function wireEvents() {
   fields.housingEmployerOwnedBtn.addEventListener("click", () => setHousingType("Employer-owned"));
   fields.housingRentedBtn.addEventListener("click", () => setHousingType("Rented"));
@@ -547,19 +503,12 @@ function wirePrefillListener() {
   const inputName = `input_${cleanId}`;
 
   try {
-    if (typeof JotformEvents !== "undefined") {
-      JotformEvents.attach("change", function (event) {
-        if (
-          event?.fieldName === inputName ||
-          event?.fieldName === cleanId ||
-          String(event?.fieldName || "").includes(cleanId)
-        ) {
-          refreshPrefill();
-        }
-      });
-    }
+    JFCustomWidget.listenFromField(inputName, "change", function (value) {
+      console.log("Prefill field changed:", value);
+      refreshPrefill();
+    });
   } catch (err) {
-    console.warn("Could not attach Jotform prefill listener:", err);
+    console.warn("Could not attach prefill field listener:", err);
   }
 }
 
