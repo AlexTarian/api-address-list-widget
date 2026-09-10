@@ -72,6 +72,17 @@ const fields = {
   backBtn: null
 };
 
+function updateWidgetHeight() {
+  requestAnimationFrame(() => {
+    try {
+      const height = Math.ceil(document.documentElement.scrollHeight);
+      JFCustomWidget.setHeight(height);
+    } catch (err) {
+      console.warn("Could not update widget height:", err);
+    }
+  });
+}
+
 function clean_(value) {
   return String(value ?? "").trim();
 }
@@ -180,6 +191,8 @@ function showCountStep() {
   if (fields.listSection) {
     fields.listSection.hidden = true;
   }
+
+  updateWidgetHeight();
 }
 
 function showAddressStep() {
@@ -190,6 +203,8 @@ function showAddressStep() {
   if (fields.listSection) {
     fields.listSection.hidden = false;
   }
+
+  updateWidgetHeight();
 }
 
 function backToCountStep() {
@@ -242,6 +257,8 @@ function toggleOwnedBy() {
   if (fields.ownedByEmployer.checked) {
     fields.ownedBy.value = "";
   }
+
+  updateWidgetHeight();
 }
 
 function normalizeCounty(value) {
@@ -734,6 +751,8 @@ function renderAddresses() {
 
     fields.addressList.appendChild(card);
   });
+
+  updateWidgetHeight();
 }
 
 function parseUSAddress(value) {
