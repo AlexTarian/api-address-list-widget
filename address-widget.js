@@ -44,8 +44,7 @@ const fields = {
   county: document.getElementById("county"),
 
   housingFields: document.getElementById("housingFields"),
-  housingEmployerOwnedBtn: document.getElementById("housingEmployerOwnedBtn"),
-  housingRentedBtn: document.getElementById("housingRentedBtn"),
+  housingTypeSelect: document.getElementById("housingType"),
   units: document.getElementById("units"),
   occupancy: document.getElementById("occupancy"),
 
@@ -232,20 +231,8 @@ function configureMode() {
 }
 
 function setHousingType(value) {
-  housingType =
-    value === "Rented"
-      ? "Rented"
-      : "Employer-owned";
-
-  fields.housingEmployerOwnedBtn.classList.toggle(
-    "active",
-    housingType === "Employer-owned"
-  );
-
-  fields.housingRentedBtn.classList.toggle(
-    "active",
-    housingType === "Rented"
-  );
+  housingType = value === "Rented" ? "Rented" : "Employer-owned";
+  fields.housingTypeSelect.value = housingType;
 }
 
 function toggleOwnedBy() {
@@ -1156,26 +1143,6 @@ async function continueToAddresses() {
 }
 
 function wireEvents() {
-  fields.housingEmployerOwnedBtn.addEventListener(
-    "click",
-    () =>
-      setHousingType(
-        "Employer-owned"
-      )
-  );
-
-  fields.housingRentedBtn.addEventListener(
-    "click",
-    () =>
-      setHousingType(
-        "Rented"
-      )
-  );
-
-  fields.ownedByEmployer.addEventListener(
-    "change",
-    toggleOwnedBy
-  );
 
   fields.saveBtn.addEventListener(
     "click",
