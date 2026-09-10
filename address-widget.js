@@ -81,15 +81,13 @@ function updateWidgetHeight() {
       const paddingTop = parseFloat(bodyStyle.paddingTop) || 0;
       const paddingBottom = parseFloat(bodyStyle.paddingBottom) || 0;
 
-      const height = Math.ceil(
-        widgetHeight +
-        paddingTop +
-        paddingBottom
-      );
+      const height = Math.ceil(widgetHeight + paddingTop + paddingBottom);
 
-      JFCustomWidget.setHeight(height);
+      JFCustomWidget.requestFrameResize({
+        height
+      });
     } catch (err) {
-      console.warn("Could not update widget height:", err);
+      console.warn("Could not resize widget:", err);
     }
   });
 }
