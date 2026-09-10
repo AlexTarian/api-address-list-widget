@@ -74,21 +74,21 @@ const fields = {
 
 function updateWidgetHeight() {
   requestAnimationFrame(() => {
-    try {
-      const widgetHeight = fields.widgetRoot.getBoundingClientRect().height;
+    requestAnimationFrame(() => {
+      try {
+        const widgetHeight = fields.widgetRoot.getBoundingClientRect().height;
 
-      const bodyStyle = getComputedStyle(document.body);
-      const paddingTop = parseFloat(bodyStyle.paddingTop) || 0;
-      const paddingBottom = parseFloat(bodyStyle.paddingBottom) || 0;
+        const bodyStyle = getComputedStyle(document.body);
+        const paddingTop = parseFloat(bodyStyle.paddingTop) || 0;
+        const paddingBottom = parseFloat(bodyStyle.paddingBottom) || 0;
 
-      const height = Math.ceil(widgetHeight + paddingTop + paddingBottom);
-
-      JFCustomWidget.requestFrameResize({
-        height
-      });
-    } catch (err) {
-      console.warn("Could not resize widget:", err);
-    }
+        JFCustomWidget.requestFrameResize({
+          height: Math.ceil(widgetHeight + paddingTop + paddingBottom)
+        });
+      } catch (err) {
+        console.warn("Could not resize widget:", err);
+      }
+    });
   });
 }
 
