@@ -455,22 +455,44 @@ function buildSubmissionValue() {
 }
 
 async function loadPrefilledAddresses() {
-  if (prefillLoaded) return;
-  prefillLoaded = true;
+  if (prefillLoaded) return true;
 
   const fieldId = getSetting_("prefillFieldId");
-  if (!fieldId) return;
+  if (!fieldId) {
+    console.log("No prefillFieldId configured.");
+    return false;
+  }
 
   const raw = await getFieldValueById_(fieldId);
-  if (!clean_(raw)) return;
+
+  if (!clean_(raw)) {
+    console.log("Prefill field exists but is currently empty. Will retry.");
+    return false;
+  }
 
   try {
     const imported = parsePrefill(raw);
+
+    if (!imported.length) {
+      console.warn("Prefill data was found, but no addresses could be parsed.");
+      return false;
+    }
+
     addresses.length = 0;
     addresses.push(...imported);
+
+    prefillLoaded = true;
+
+    renderAddresses();
+
+    console.log(`Loaded ${imported.length} prefilled address(es).`);
+    return true;
   } catch (err) {
     console.warn("Could not parse prefilled addresses:", err);
-    fields.globalError.textContent = "Some prefilled addresses could not be loaded. Please review the address list carefully.";
+    fields.globalError.textContent =
+      "Some prefilled addresses could not be loaded. Please review the address list carefully.";
+
+    return false;
   }
 }
 
