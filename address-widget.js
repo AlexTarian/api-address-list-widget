@@ -8,7 +8,6 @@ let requiredAddressCount = 0;
 const MODES = {
   housing: {
     title: "Housing Locations",
-    subtitle: "Add each housing location that will be used for this job order.",
     singular: "Housing Location",
     plural: "Housing Locations",
     addLabel: "+ Add Housing",
@@ -19,7 +18,6 @@ const MODES = {
 
   worksite: {
     title: "Worksites",
-    subtitle: "Add each worksite where H-2A workers may perform work.",
     singular: "Worksite",
     plural: "Worksites",
     addLabel: "+ Add Worksite",
@@ -32,7 +30,6 @@ const MODES = {
 const fields = {
   widgetRoot: document.getElementById("widgetRoot"),
   widgetTitle: document.getElementById("widgetTitle"),
-  widgetSubtitle: document.getElementById("widgetSubtitle"),
   editorSection: document.getElementById("editorSection"),
   listSection: document.querySelector(".address-list-section"),
 
@@ -73,7 +70,7 @@ const fields = {
   addressCountInput: null,
   nextBtn: null,
   countError: null,
-  backBtn: null,
+  backBtn: null
 };
 
 function clean_(value) {
@@ -104,7 +101,6 @@ async function getFieldValueById_(fieldId) {
   return await new Promise(resolve => {
     try {
       JFCustomWidget.getFieldsValueById([cleanFieldId], response => {
-        console.log("Prefill field response:", response);
 
         const data = Array.isArray(response?.data)
           ? response.data
@@ -211,14 +207,12 @@ function backToCountStep() {
 }
 
 function populateStates() {
-  fields.state.innerHTML = '<option value="">Select state</option>';
+  fields.state.innerHTML = '<option value="">State *</option>';
 
   US_STATES.forEach(state => {
     const option = document.createElement("option");
-
     option.value = state.code;
     option.textContent = `${state.name} (${state.code})`;
-
     fields.state.appendChild(option);
   });
 }
@@ -228,7 +222,6 @@ function configureMode() {
   const config = MODES[mode];
 
   fields.widgetTitle.textContent = config.title;
-  fields.widgetSubtitle.textContent = config.subtitle;
   fields.listHeading.textContent = config.listLabel;
   fields.saveBtn.textContent = config.addLabel;
   fields.countQuestion.textContent = config.countQuestion;
@@ -236,11 +229,6 @@ function configureMode() {
   fields.housingFields.hidden = mode !== "housing";
   fields.worksiteFields.hidden = mode !== "worksite";
   fields.street2Wrap.hidden = mode !== "housing";
-
-  fields.street1Label.innerHTML =
-    mode === "housing"
-      ? 'Street 1<span class="required">*</span>'
-      : 'Street<span class="required">*</span>';
 }
 
 function setHousingType(value) {
@@ -560,7 +548,7 @@ function editAddress(index) {
     block: "start"
   });
 
-  fields.nickname.focus();
+  fields.street1.focus();
 }
 
 function deleteAddress(index) {
@@ -711,119 +699,54 @@ function buildCardDetails(item) {
 function renderAddresses() {
   fields.addressList.innerHTML = "";
 
-  fields.addressCount.textContent =
-    requiredAddressCount
-      ? `${addresses.length}/${requiredAddressCount}`
-      : addresses.length;
+  fields.addressCount.textContent = requiredAddressCount
+    ? `${addresses.length}/${requiredAddressCount}`
+    : addresses.length;
 
   if (!addresses.length) {
-    const empty =
-      document.createElement("div");
-
-    empty.className =
-      "empty-state";
-
-    empty.textContent =
-      MODES[getMode()].emptyLabel;
-
-    fields.addressList.appendChild(
-      empty
-    );
-
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = MODES[getMode()].emptyLabel;
+    fields.addressList.appendChild(empty);
     return;
   }
 
-  addresses.forEach(
-    (item, index) => {
-      const card =
-        document.createElement("div");
+  addresses.forEach((item, index) => {
+    const card = document.createElement("div");
+    card.className = "address-card";
 
-      card.className =
-        "address-card";
+    const street = [item.street1, item.street2].filter(Boolean).join(", ");
 
-      const street =
-        [
-          item.street1,
-          item.street2
-        ]
-          .filter(Boolean)
-          .join(", ");
+    const fullAddress = [
+      street,
+      item.city,
+      `${item.state} ${item.zip}`.trim()
+    ].filter(Boolean).join(", ");
 
-      const cityStateZip =
-        `${item.city}, ${item.state} ${item.zip}`.trim();
+    const details = buildCardDetails(item);
 
-      card.innerHTML = `
-        <div class="address-main">
-          <div class="address-title">
-            ${escapeHtml(
-              buildCardTitle(
-                item,
-                index
-              )
-            )}
-          </div>
-
-          <div class="address-line">
-            ${escapeHtml(street)}
-          </div>
-
-          <div class="address-line">
-            ${escapeHtml(
-              cityStateZip
-            )}
-          </div>
-
-          <div class="address-details">
-            ${escapeHtml(
-              item.county
-            )}${
-              buildCardDetails(item)
-                ? " • " +
-                  escapeHtml(
-                    buildCardDetails(item)
-                  )
-                : ""
-            }
-          </div>
+    card.innerHTML = `
+      <div class="address-main">
+        <div class="address-primary" title="${escapeHtml(fullAddress)}">
+          ${escapeHtml(fullAddress)}
         </div>
 
-        <div class="card-actions">
-          <button
-            class="edit-btn"
-            type="button"
-          >
-            Edit
-          </button>
-
-          <button
-            class="delete-btn"
-            type="button"
-            aria-label="Delete address"
-          >
-            ✕
-          </button>
+        <div class="address-details">
+          ${escapeHtml(details)}
         </div>
-      `;
+      </div>
 
-      card
-        .querySelector(".edit-btn")
-        .addEventListener(
-          "click",
-          () => editAddress(index)
-        );
+      <div class="card-actions">
+        <button class="edit-btn" type="button">Edit</button>
+        <button class="delete-btn" type="button" aria-label="Delete address">✕</button>
+      </div>
+    `;
 
-      card
-        .querySelector(".delete-btn")
-        .addEventListener(
-          "click",
-          () => deleteAddress(index)
-        );
+    card.querySelector(".edit-btn").addEventListener("click", () => editAddress(index));
+    card.querySelector(".delete-btn").addEventListener("click", () => deleteAddress(index));
 
-      fields.addressList.appendChild(
-        card
-      );
-    }
-  );
+    fields.addressList.appendChild(card);
+  });
 }
 
 function parseUSAddress(value) {
