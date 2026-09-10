@@ -498,19 +498,27 @@ async function initializeWidget() {
   renderAddresses();
 }
 
-document.addEventListener("DOMContentLoaded", initializeWidget);
-
 JFCustomWidget.subscribe("ready", async function () {
   await initializeWidget();
 
   JFCustomWidget.subscribe("submit", function () {
     if (!addresses.length) {
-      fields.globalError.textContent = `Please add at least one ${MODES[getMode()].singular.toLowerCase()}.`;
-      JFCustomWidget.sendSubmit({ valid: false, value: "" });
+      fields.globalError.textContent =
+        `Please add at least one ${MODES[getMode()].singular.toLowerCase()}.`;
+
+      JFCustomWidget.sendSubmit({
+        valid: false,
+        value: ""
+      });
+
       return;
     }
 
     fields.globalError.textContent = "";
-    JFCustomWidget.sendSubmit({ valid: true, value: buildSubmissionValue() });
+
+    JFCustomWidget.sendSubmit({
+      valid: true,
+      value: buildSubmissionValue()
+    });
   });
 });
