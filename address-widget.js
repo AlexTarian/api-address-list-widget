@@ -72,7 +72,8 @@ const fields = {
   countQuestion: null,
   addressCountInput: null,
   nextBtn: null,
-  countError: null
+  countError: null,
+  backBtn: null,
 };
 
 function clean_(value) {
@@ -130,6 +131,18 @@ async function getFieldValueById_(fieldId) {
   });
 }
 
+function createBackButton() {
+  const button = document.createElement("button");
+
+  button.id = "addressBackBtn";
+  button.type = "button";
+  button.className = "back-btn";
+  button.textContent = "← Back";
+
+  fields.editorSection.before(button);
+  fields.backBtn = button;
+}
+
 function createCountStep() {
   const section = document.createElement("section");
 
@@ -166,6 +179,7 @@ function createCountStep() {
 
 function showCountStep() {
   fields.countStep.hidden = false;
+  fields.backBtn.hidden = true;
   fields.editorSection.hidden = true;
 
   if (fields.listSection) {
@@ -175,11 +189,25 @@ function showCountStep() {
 
 function showAddressStep() {
   fields.countStep.hidden = true;
+  fields.backBtn.hidden = false;
   fields.editorSection.hidden = false;
 
   if (fields.listSection) {
     fields.listSection.hidden = false;
   }
+}
+
+function backToCountStep() {
+  fields.addressCountInput.value = requiredAddressCount || "";
+
+  fields.formError.textContent = "";
+  fields.globalError.textContent = "";
+
+  exitEditMode();
+  clearForm();
+  showCountStep();
+
+  fields.addressCountInput.focus();
 }
 
 function populateStates() {
@@ -1256,19 +1284,22 @@ function wireEvents() {
       }
     }
   );
+
+  fields.backBtn.addEventListener(
+  "click",
+  backToCountStep
+);
 }
 
 async function initializeWidget() {
-  console.log("ADDRESS WIDGET INITIALIZING");
-
   if (initialized) {
-    console.log("Address widget already initialized.");
     return;
   }
 
   initialized = true;
 
   createCountStep();
+  createBackButton();
   populateStates();
   configureMode();
   setHousingType("Employer-owned");
@@ -1276,11 +1307,6 @@ async function initializeWidget() {
   wireEvents();
   showCountStep();
   renderAddresses();
-
-  console.log("Address widget initialized.", {
-    mode: getMode(),
-    prefillFieldId: getSetting_("prefillFieldId")
-  });
 }
 
 JFCustomWidget.subscribe(
