@@ -3,7 +3,6 @@ let editingIndex = null;
 let initialized = false;
 let prefillLoaded = false;
 let housingType = "Employer-owned";
-let prefillLoaded = false;
 let lastPrefillValue = "";
 
 const MODES = {
