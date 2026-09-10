@@ -3,6 +3,8 @@ let editingIndex = null;
 let initialized = false;
 let prefillLoaded = false;
 let housingType = "Employer-owned";
+let prefillLoaded = false;
+let lastPrefillValue = "";
 
 const MODES = {
   housing: {
@@ -130,6 +132,37 @@ function toggleOwnedBy() {
 
 function normalizeCounty(value) {
   return clean_(value);
+}
+
+async function refreshPrefill() {
+  const fieldId = getSetting_("prefillFieldId");
+  if (!fieldId) return;
+
+  const raw = await getFieldValueById_(fieldId);
+  const cleaned = clean_(raw);
+
+  if (!cleaned) return;
+
+  // Don't import the exact same value twice.
+  if (cleaned === lastPrefillValue) return;
+
+  try {
+    const imported = parsePrefill(cleaned);
+
+    if (!imported.length) return;
+
+    addresses.length = 0;
+    addresses.push(...imported);
+
+    lastPrefillValue = cleaned;
+    prefillLoaded = true;
+
+    renderAddresses();
+
+    console.log(`Loaded ${imported.length} prefilled address(es).`);
+  } catch (err) {
+    console.warn("Could not parse prefilled addresses:", err);
+  }
 }
 
 function buildBaseAddress() {
@@ -507,6 +540,30 @@ function wireEvents() {
   });
 }
 
+function wirePrefillListener() {
+  const fieldId = getSetting_("prefillFieldId");
+  if (!fieldId) return;
+
+  const cleanId = String(fieldId).replace(/\D/g, "");
+  const inputName = `input_${cleanId}`;
+
+  try {
+    if (typeof JotformEvents !== "undefined") {
+      JotformEvents.attach("change", function (event) {
+        if (
+          event?.fieldName === inputName ||
+          event?.fieldName === cleanId ||
+          String(event?.fieldName || "").includes(cleanId)
+        ) {
+          refreshPrefill();
+        }
+      });
+    }
+  } catch (err) {
+    console.warn("Could not attach Jotform prefill listener:", err);
+  }
+}
+
 async function initializeWidget() {
   if (initialized) return;
   initialized = true;
@@ -516,8 +573,11 @@ async function initializeWidget() {
   setHousingType("Employer-owned");
   toggleOwnedBy();
   wireEvents();
-  await loadPrefilledAddresses();
+  wirePrefillListener();
+
   renderAddresses();
+
+  await refreshPrefill();
 }
 
 JFCustomWidget.subscribe("ready", async function () {
