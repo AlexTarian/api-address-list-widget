@@ -799,7 +799,7 @@ function renderAddresses() {
 }
 
 function parseUSAddress(value) {
-  const raw = clean_(value).replace(/,\s*,+/g, ", ");
+  const raw = clean_(value);
 
   if (!raw) {
     return {
@@ -812,7 +812,6 @@ function parseUSAddress(value) {
     };
   }
 
-  // Primary-address format with preserved separators.
   if (raw.includes("¦")) {
     const parts = raw
       .split("¦")
@@ -831,11 +830,9 @@ function parseUSAddress(value) {
     }
   }
 
-  // Normal comma-separated format.
-  const parts = raw
-    .split(",")
-    .map(part => part.trim())
-    .filter(Boolean);
+  // Keep the existing comma-based fallback for legacy/manual data.
+  const normalized = raw.replace(/,\s*,+/g, ", ");
+  const parts = normalized.split(",").map(part => part.trim()).filter(Boolean);
 
   const stateZipIndex = parts.findIndex(part =>
     /^[A-Z]{2}\s+\d{5}(?:-\d{4})?$/i.test(part)
@@ -857,22 +854,6 @@ function parseUSAddress(value) {
       state: stateZipMatch?.[1]?.toUpperCase() || "",
       zip: stateZipMatch?.[2] || "",
       county
-    };
-  }
-
-  // Fallback for already-flattened historical strings.
-  const compactMatch = raw.match(
-    /^(.*?)\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)\s+(.+?(?:COUNTY|PARISH|BOROUGH|CENSUS AREA|MUNICIPALITY|PLANNING REGION))$/i
-  );
-
-  if (compactMatch) {
-    return {
-      street1: compactMatch[1].trim(),
-      street2: "",
-      city: "",
-      state: compactMatch[2].toUpperCase(),
-      zip: compactMatch[3],
-      county: compactMatch[4].trim()
     };
   }
 
