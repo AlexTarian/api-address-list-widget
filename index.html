@@ -7,59 +7,58 @@
   <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
   <div class="widget" id="widgetRoot">
     <div class="widget-header">
-      <div>
-        <h2 id="widgetTitle">Addresses</h2>
-        <p id="widgetSubtitle">Add as many locations as needed.</p>
-      </div>
+      <h2 id="widgetTitle">Addresses</h2>
     </div>
 
     <section class="editor" id="editorSection">
       <div class="grid">
-        <div class="full-width">
-          <label for="nickname">Nickname <span class="optional">(optional)</span></label>
+        <!-- Nickname intentionally hidden for now, but preserved for future use -->
+        <div class="full-width" hidden>
+          <label for="nickname">Nickname</label>
           <input id="nickname" type="text" autocomplete="off" />
         </div>
 
         <div>
-          <label for="street1" id="street1Label">Street 1<span class="required">*</span></label>
-          <input id="street1" type="text" autocomplete="street-address" />
+          <label class="sr-only" for="street1" id="street1Label">Street</label>
+          <input id="street1" type="text" autocomplete="street-address" placeholder="Street *" aria-label="Street" />
         </div>
 
         <div id="street2Wrap">
-          <label for="street2">Street 2 <span class="optional">(optional)</span></label>
-          <input id="street2" type="text" autocomplete="address-line2" />
+          <label class="sr-only" for="street2">Street 2</label>
+          <input id="street2" type="text" autocomplete="address-line2" placeholder="Street 2" aria-label="Street 2" />
         </div>
 
         <div>
-          <label for="city">City<span class="required">*</span></label>
-          <input id="city" type="text" autocomplete="address-level2" />
+          <label class="sr-only" for="city">City</label>
+          <input id="city" type="text" autocomplete="address-level2" placeholder="City *" aria-label="City" />
         </div>
 
         <div>
-          <label for="state">State<span class="required">*</span></label>
-          <select id="state">
-            <option value="">Select state</option>
+          <label class="sr-only" for="state">State</label>
+          <select id="state" aria-label="State">
+            <option value="">State *</option>
           </select>
         </div>
 
         <div>
-          <label for="zip">ZIP<span class="required">*</span></label>
-          <input id="zip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="10" />
+          <label class="sr-only" for="zip">ZIP</label>
+          <input id="zip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="10" placeholder="ZIP *" aria-label="ZIP" />
         </div>
 
         <div>
-          <label for="county">County / Planning Region<span class="required">*</span></label>
-          <input id="county" type="text" autocomplete="off" />
+          <label class="sr-only" for="county">County / Planning Region</label>
+          <input id="county" type="text" autocomplete="off" placeholder="County / Planning Region *" aria-label="County / Planning Region" />
         </div>
       </div>
 
       <div id="housingFields" class="mode-panel" hidden>
         <div class="small-row">
           <div>
-            <label>Type<span class="required">*</span></label>
+            <label class="compact-label">Type *</label>
             <div class="segmented-control" role="group" aria-label="Housing type">
               <button id="housingEmployerOwnedBtn" class="segment active" type="button">Employer-owned</button>
               <button id="housingRentedBtn" class="segment" type="button">Rented</button>
@@ -67,13 +66,13 @@
           </div>
 
           <div>
-            <label for="units">Units<span class="required">*</span></label>
-            <input id="units" type="number" min="1" step="1" inputmode="numeric" />
+            <label class="sr-only" for="units">Units</label>
+            <input id="units" type="number" min="1" step="1" inputmode="numeric" placeholder="Units *" aria-label="Units" />
           </div>
 
           <div>
-            <label for="occupancy">Occupancy<span class="required">*</span></label>
-            <input id="occupancy" type="number" min="1" step="1" inputmode="numeric" />
+            <label class="sr-only" for="occupancy">Occupancy</label>
+            <input id="occupancy" type="number" min="1" step="1" inputmode="numeric" placeholder="Occupancy *" aria-label="Occupancy" />
           </div>
         </div>
       </div>
@@ -86,30 +85,30 @@
           </label>
 
           <div id="ownedByWrap" hidden>
-            <label for="ownedBy">Owned By<span class="required">*</span></label>
-            <input id="ownedBy" type="text" autocomplete="off" />
+            <label class="sr-only" for="ownedBy">Owned By</label>
+            <input id="ownedBy" type="text" autocomplete="off" placeholder="Owned By *" aria-label="Owned By" />
           </div>
         </div>
 
         <div class="small-row">
           <div>
-            <label for="startDate">Start Date <span class="optional">(optional)</span></label>
+            <label class="compact-label" for="startDate">Start Date</label>
             <input id="startDate" type="date" />
           </div>
 
           <div>
-            <label for="endDate">End Date <span class="optional">(optional)</span></label>
+            <label class="compact-label" for="endDate">End Date</label>
             <input id="endDate" type="date" />
           </div>
 
           <div>
-            <label for="workers">Workers <span class="optional">(optional)</span></label>
-            <input id="workers" type="number" min="0" step="1" inputmode="numeric" />
+            <label class="sr-only" for="workers">Workers</label>
+            <input id="workers" type="number" min="0" step="1" inputmode="numeric" placeholder="Workers" aria-label="Workers" />
           </div>
         </div>
       </div>
 
-      <div class="action-row">
+      <div class="action-row compact-actions">
         <button id="saveBtn" type="button">+ Add Address</button>
         <button id="cancelEditBtn" class="secondary-btn" type="button" hidden>Cancel Edit</button>
       </div>
@@ -122,6 +121,7 @@
         <h3 id="listHeading">Added Addresses</h3>
         <span id="addressCount" class="count-badge">0</span>
       </div>
+
       <div id="addressList" class="address-list"></div>
     </section>
 
@@ -129,6 +129,6 @@
   </div>
 
   <script src="states.js"></script>
-  <script src="address-widget.js?v=4"></script>
+  <script src="address-widget.js?v=5"></script>
 </body>
 </html>
