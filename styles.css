@@ -131,32 +131,6 @@ select:focus {
   transform: scale(1.1);
 }
 
-.segmented-control {
-  display: inline-flex;
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.segmented-control .segment {
-  flex: 1;
-  border: 0;
-  border-right: 1px solid var(--border);
-  border-radius: 0;
-  background: #fff;
-  color: #333;
-}
-
-.segmented-control .segment:last-child {
-  border-right: 0;
-}
-
-.segmented-control .segment.active {
-  background: var(--blue);
-  color: #fff;
-}
-
 button {
   border: 0;
   border-radius: 9px;
@@ -199,6 +173,7 @@ button:disabled {
 
 .action-row {
   display: flex;
+  justify-content: center;
   gap: 8px;
   margin-top: 8px;
   margin-bottom: 2px;
