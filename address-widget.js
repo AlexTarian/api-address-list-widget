@@ -1,3 +1,5 @@
+console.log("ADDRESS WIDGET JS LOADED - COUNT PREFILL VERSION v3");
+
 const addresses = [];
 let editingIndex = null;
 let initialized = false;
