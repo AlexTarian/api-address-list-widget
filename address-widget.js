@@ -855,7 +855,7 @@ function formatWorksiteForPdf(item) {
 
   const dates =
     item.startDate || item.endDate
-      ? `${item.startDate || "?"}-${item.endDate || "?"}`
+      ? `${formatDateForCard(item.startDate) || "?"}-${formatDateForCard(item.endDate) || "?"}`
       : "";
 
   const workers =
@@ -943,14 +943,6 @@ JFCustomWidget.subscribe("ready", async function () {
     fields.globalError.textContent = "";
 
     const jsonValue = JSON.stringify(addresses);
-    const pdfValue = buildHumanReadableValue();
-
-    JFCustomWidget.setFieldsValueById([
-      {
-        id: getSetting_("pdfFieldId"),
-        value: pdfValue
-      }
-    ]);
 
     JFCustomWidget.sendSubmit({
       valid: true,
