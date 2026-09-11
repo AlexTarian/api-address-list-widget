@@ -124,12 +124,22 @@ function updateModalHeight() {
     requestAnimationFrame(() => {
       try {
         const modalHeight = fields.modalCard.getBoundingClientRect().height;
+
         const bodyStyle = getComputedStyle(document.body);
         const paddingTop = parseFloat(bodyStyle.paddingTop) || 0;
         const paddingBottom = parseFloat(bodyStyle.paddingBottom) || 0;
 
+        const requiredHeight = Math.ceil(
+          modalHeight +
+          paddingTop +
+          paddingBottom +
+          24
+        );
+
+        const currentHeight = Math.ceil(window.innerHeight);
+
         JFCustomWidget.requestFrameResize({
-          height: Math.ceil(modalHeight + paddingTop + paddingBottom + 24)
+          height: Math.max(currentHeight, requiredHeight)
         });
       } catch (err) {
         console.warn("Could not resize widget modal:", err);
@@ -285,7 +295,9 @@ function normalizeCounty(value) {
 }
 
 function buildBaseAddress() {
-  const existing = editingIndex !== null ? addresses[editingIndex] : null;
+  const existing = editingIndex !== null
+    ? addresses[editingIndex]
+    : null;
 
   return {
     nickname: clean_(fields.nickname.value),
@@ -298,7 +310,8 @@ function buildBaseAddress() {
 
     latitude: existing?.latitude ?? null,
     longitude: existing?.longitude ?? null,
-    source: existing?.source || "manual"
+    source: existing?.source || "manual",
+    isPrimary: existing?.isPrimary ?? false
   };
 }
 
@@ -561,6 +574,10 @@ function formatDateForCard(value) {
 }
 
 function buildCardDetails(item) {
+  if (item.isPrimary) {
+    return "Primary Address";
+  }
+
   if (item.type === "housing") {
     return `${item.housingType || ""}${
       item.units != null ? ` • Units: ${item.units}` : ""
@@ -583,7 +600,9 @@ function buildCardDetails(item) {
     ? `${item.workers} worker${item.workers === 1 ? "" : "s"}`
     : "";
 
-  return [owner, dates, workers].filter(Boolean).join(" • ");
+  return [owner, dates, workers]
+    .filter(Boolean)
+    .join(" • ");
 }
 
 function renderAddresses() {
@@ -785,11 +804,16 @@ function parsePrefill(raw) {
     .split(/\r?\n/)
     .map(line => line.trim())
     .filter(Boolean)
-    .map(line =>
-      mode === "housing"
+    .map((line, index) => {
+      const item = mode === "housing"
         ? parseHousingLine(line)
-        : parseWorksiteLine(line)
-    )
+        : parseWorksiteLine(line);
+
+      return {
+        ...item,
+        isPrimary: index === 0
+      };
+    })
     .filter(Boolean);
 }
 
