@@ -869,18 +869,13 @@ function formatWorksiteForPdf(item) {
 }
 
 function syncPdfField() {
-  const pdfFieldId = getSetting_("pdfFieldId");
-
-  if (!pdfFieldId) {
-    return;
-  }
-
+  const mode = getMode();
   const pdfValue = buildHumanReadableValue();
 
   try {
-    JFCustomWidget.setFieldsValueById([
+    JFCustomWidget.setFieldsValueByLabel([
       {
-        selector: pdfFieldId,
+        label: `New ${mode==='worksite' ? 'Worksite' : 'Housing'} List`,
         value: pdfValue
       }
     ]);
