@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Address List Widget</title>
+
   <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -14,121 +15,152 @@
       <h2 id="widgetTitle">Addresses</h2>
     </div>
 
-    <section class="editor" id="editorSection">
-      <div class="grid">
-        <!-- Nickname intentionally hidden for now, but preserved for future use -->
-        <div class="full-width" hidden>
-          <label for="nickname">Nickname</label>
-          <input id="nickname" type="text" autocomplete="off" />
-        </div>
-
-        <div>
-          <label class="sr-only" for="street1" id="street1Label">Street</label>
-          <input id="street1" type="text" autocomplete="street-address" placeholder="Street *" aria-label="Street" />
-        </div>
-
-        <div id="street2Wrap">
-          <label class="sr-only" for="street2">Street 2</label>
-          <input id="street2" type="text" autocomplete="address-line2" placeholder="Street 2" aria-label="Street 2" />
-        </div>
-
-        <div>
-          <label class="sr-only" for="city">City</label>
-          <input id="city" type="text" autocomplete="address-level2" placeholder="City *" aria-label="City" />
-        </div>
-
-        <div>
-          <label class="sr-only" for="state">State</label>
-          <select id="state" aria-label="State">
-            <option value="">State *</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="sr-only" for="zip">ZIP</label>
-          <input id="zip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="10" placeholder="ZIP *" aria-label="ZIP" />
-        </div>
-
-        <div>
-          <label class="sr-only" for="county">County / Planning Region</label>
-          <input id="county" type="text" autocomplete="off" placeholder="County / Planning Region *" aria-label="County / Planning Region" />
-        </div>
+    <!-- START CHOICE -->
+    <section id="startSection" class="start-section">
+      <div class="start-actions">
+        <button id="reuseAddressesBtn" type="button">Reuse Previous Addresses</button>
+        <button id="newAddressListBtn" class="secondary-btn" type="button">Start New Address List</button>
       </div>
 
-      <div id="housingFields" class="mode-panel" hidden>
-        <div class="small-row">
-          <div>
-            <label class="sr-only" for="housingType">Housing Type</label>
-            <select id="housingType" aria-label="Housing Type">
-              <option value="Employer-owned">Employer-owned</option>
-              <option value="Rented">Rented</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="sr-only" for="units">Units</label>
-            <input id="units" type="number" min="1" step="1" inputmode="numeric" placeholder="Units *" aria-label="Units" />
-          </div>
-
-          <div>
-            <label class="sr-only" for="occupancy">Occupancy</label>
-            <input id="occupancy" type="number" min="1" step="1" inputmode="numeric" placeholder="Occupancy *" aria-label="Occupancy" />
-          </div>
-        </div>
-      </div>
-
-      <div id="worksiteFields" class="mode-panel" hidden>
-        <div class="small-row">
-          <label class="checkbox-row" for="ownedByEmployer">
-            <input id="ownedByEmployer" type="checkbox" checked />
-            Owned by Employer
-          </label>
-
-          <div id="ownedByWrap" hidden>
-            <label class="sr-only" for="ownedBy">Owned By</label>
-            <input id="ownedBy" type="text" autocomplete="off" placeholder="Owned By *" aria-label="Owned By" />
-          </div>
-        </div>
-
-        <div class="small-row">
-          <div>
-            <label class="compact-label" for="startDate">Start Date</label>
-            <input id="startDate" type="date" />
-          </div>
-
-          <div>
-            <label class="compact-label" for="endDate">End Date</label>
-            <input id="endDate" type="date" />
-          </div>
-
-          <div>
-            <label class="sr-only" for="workers">Workers</label>
-            <input id="workers" type="number" min="0" step="1" inputmode="numeric" placeholder="Workers" aria-label="Workers" />
-          </div>
-        </div>
-      </div>
-
-      <div class="action-row compact-actions">
-        <button id="saveBtn" type="button">+ Add Address</button>
-        <button id="cancelEditBtn" class="secondary-btn" type="button" hidden>Cancel Edit</button>
-      </div>
-
-      <div id="formError" class="error" aria-live="polite"></div>
+      <div id="startError" class="error" aria-live="polite"></div>
     </section>
 
-    <section class="address-list-section">
+    <!-- ADDRESS LIST -->
+    <section id="addressListSection" class="address-list-section" hidden>
       <div class="list-heading-row">
-        <h3 id="listHeading">Added Addresses</h3>
+        <h3 id="listHeading">Addresses</h3>
         <span id="addressCount" class="count-badge">0</span>
       </div>
 
       <div id="addressList" class="address-list"></div>
+
+      <div class="action-row compact-actions">
+        <button id="addAddressBtn" type="button">+ Add Address</button>
+      </div>
     </section>
+
+    <!-- ADDRESS MODAL -->
+    <div id="addressModal" class="modal-overlay" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-header">
+          <h3 id="modalTitle">Add Address</h3>
+
+          <button id="closeModalBtn" class="modal-close" type="button" aria-label="Close">
+            ×
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="grid">
+            <!-- Nickname intentionally preserved for possible future use -->
+            <div class="full-width" hidden>
+              <label for="nickname">Nickname</label>
+              <input id="nickname" type="text" autocomplete="off" />
+            </div>
+
+            <div>
+              <label class="sr-only" for="street1" id="street1Label">Street</label>
+              <input id="street1" type="text" autocomplete="street-address" placeholder="Street *" aria-label="Street" />
+            </div>
+
+            <div id="street2Wrap">
+              <label class="sr-only" for="street2">Street 2</label>
+              <input id="street2" type="text" autocomplete="address-line2" placeholder="Street 2" aria-label="Street 2" />
+            </div>
+
+            <div>
+              <label class="sr-only" for="city">City</label>
+              <input id="city" type="text" autocomplete="address-level2" placeholder="City *" aria-label="City" />
+            </div>
+
+            <div>
+              <label class="sr-only" for="state">State</label>
+              <select id="state" aria-label="State">
+                <option value="">State *</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="sr-only" for="zip">ZIP</label>
+              <input id="zip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="10" placeholder="ZIP *" aria-label="ZIP" />
+            </div>
+
+            <div>
+              <label class="sr-only" for="county">County / Planning Region</label>
+              <input id="county" type="text" autocomplete="off" placeholder="County / Planning Region *" aria-label="County / Planning Region" />
+            </div>
+          </div>
+
+          <!-- HOUSING FIELDS -->
+          <div id="housingFields" class="mode-panel" hidden>
+            <div class="small-row">
+              <div>
+                <label class="sr-only" for="housingType">Housing Type</label>
+                <select id="housingType" aria-label="Housing Type">
+                  <option value="Employer-owned">Employer-owned</option>
+                  <option value="Rented">Rented</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="sr-only" for="units">Units</label>
+                <input id="units" type="number" min="1" step="1" inputmode="numeric" placeholder="Units *" aria-label="Units" />
+              </div>
+
+              <div>
+                <label class="sr-only" for="occupancy">Occupancy</label>
+                <input id="occupancy" type="number" min="1" step="1" inputmode="numeric" placeholder="Occupancy *" aria-label="Occupancy" />
+              </div>
+            </div>
+          </div>
+
+          <!-- WORKSITE FIELDS -->
+          <div id="worksiteFields" class="mode-panel" hidden>
+            <div class="small-row">
+              <label class="checkbox-row" for="ownedByEmployer">
+                <input id="ownedByEmployer" type="checkbox" checked />
+                Owned by Employer
+              </label>
+
+              <div id="ownedByWrap" hidden>
+                <label class="sr-only" for="ownedBy">Owned By</label>
+                <input id="ownedBy" type="text" autocomplete="off" placeholder="Owned By *" aria-label="Owned By" />
+              </div>
+            </div>
+
+            <div class="small-row">
+              <div>
+                <label class="compact-label" for="startDate">Start Date</label>
+                <input id="startDate" type="date" />
+              </div>
+
+              <div>
+                <label class="compact-label" for="endDate">End Date</label>
+                <input id="endDate" type="date" />
+              </div>
+
+              <div>
+                <label class="sr-only" for="workers">Workers</label>
+                <input id="workers" type="number" min="0" step="1" inputmode="numeric" placeholder="Workers" aria-label="Workers" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="formError" class="error" aria-live="polite"></div>
+
+        <div class="modal-actions">
+          <button id="cancelModalBtn" class="secondary-btn" type="button">Cancel</button>
+          <button id="saveAddressBtn" type="button">Save Address</button>
+          <button id="saveAnotherBtn" type="button">Save & Add Another</button>
+        </div>
+      </div>
+    </div>
 
     <div id="globalError" class="error" aria-live="polite"></div>
   </div>
 
   <script src="states.js"></script>
-  <script src="address-widget.js?v=5"></script>
+  <script src="address-widget.js?v=6"></script>
 </body>
 </html>
