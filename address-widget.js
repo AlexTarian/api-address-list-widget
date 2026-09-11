@@ -1,9 +1,9 @@
 const addresses = [];
+
 let editingIndex = null;
 let initialized = false;
 let prefillLoaded = false;
 let housingType = "Employer-owned";
-let requiredAddressCount = 0;
 
 const MODES = {
   housing: {
@@ -11,9 +11,10 @@ const MODES = {
     singular: "Housing Location",
     plural: "Housing Locations",
     addLabel: "+ Add Housing",
-    listLabel: "Added Housing",
+    listLabel: "Housing Locations",
     emptyLabel: "No housing locations added yet.",
-    countQuestion: "How many housing locations will be used?"
+    addModalTitle: "Add Housing Location",
+    editModalTitle: "Edit Housing Location"
   },
 
   worksite: {
@@ -21,21 +22,38 @@ const MODES = {
     singular: "Worksite",
     plural: "Worksites",
     addLabel: "+ Add Worksite",
-    listLabel: "Added Worksites",
+    listLabel: "Worksites",
     emptyLabel: "No worksites added yet.",
-    countQuestion: "How many worksites will be used?"
+    addModalTitle: "Add Worksite",
+    editModalTitle: "Edit Worksite"
   }
 };
 
 const fields = {
   widgetRoot: document.getElementById("widgetRoot"),
   widgetTitle: document.getElementById("widgetTitle"),
-  editorSection: document.getElementById("editorSection"),
-  listSection: document.querySelector(".address-list-section"),
+
+  startSection: document.getElementById("startSection"),
+  reuseAddressesBtn: document.getElementById("reuseAddressesBtn"),
+  newAddressListBtn: document.getElementById("newAddressListBtn"),
+  startError: document.getElementById("startError"),
+
+  listSection: document.getElementById("addressListSection"),
+  listHeading: document.getElementById("listHeading"),
+  addressCount: document.getElementById("addressCount"),
+  addressList: document.getElementById("addressList"),
+  addAddressBtn: document.getElementById("addAddressBtn"),
+
+  addressModal: document.getElementById("addressModal"),
+  modalCard: document.querySelector("#addressModal .modal-card"),
+  modalTitle: document.getElementById("modalTitle"),
+  closeModalBtn: document.getElementById("closeModalBtn"),
+  cancelModalBtn: document.getElementById("cancelModalBtn"),
+  saveAddressBtn: document.getElementById("saveAddressBtn"),
+  saveAnotherBtn: document.getElementById("saveAnotherBtn"),
 
   nickname: document.getElementById("nickname"),
   street1: document.getElementById("street1"),
-  street1Label: document.getElementById("street1Label"),
   street2: document.getElementById("street2"),
   street2Wrap: document.getElementById("street2Wrap"),
   city: document.getElementById("city"),
@@ -56,41 +74,9 @@ const fields = {
   endDate: document.getElementById("endDate"),
   workers: document.getElementById("workers"),
 
-  saveBtn: document.getElementById("saveBtn"),
-  cancelEditBtn: document.getElementById("cancelEditBtn"),
   formError: document.getElementById("formError"),
-  globalError: document.getElementById("globalError"),
-  listHeading: document.getElementById("listHeading"),
-  addressCount: document.getElementById("addressCount"),
-  addressList: document.getElementById("addressList"),
-
-  countStep: null,
-  countQuestion: null,
-  addressCountInput: null,
-  nextBtn: null,
-  countError: null,
-  backBtn: null
+  globalError: document.getElementById("globalError")
 };
-
-function updateWidgetHeight() {
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      try {
-        const widgetHeight = fields.widgetRoot.getBoundingClientRect().height;
-
-        const bodyStyle = getComputedStyle(document.body);
-        const paddingTop = parseFloat(bodyStyle.paddingTop) || 0;
-        const paddingBottom = parseFloat(bodyStyle.paddingBottom) || 0;
-
-        JFCustomWidget.requestFrameResize({
-          height: Math.ceil(widgetHeight + paddingTop + paddingBottom)
-        });
-      } catch (err) {
-        console.warn("Could not resize widget:", err);
-      }
-    });
-  });
-}
 
 function clean_(value) {
   return String(value ?? "").trim();
@@ -106,8 +92,50 @@ function getSetting_(name) {
 }
 
 function getMode() {
-  const raw = getSetting_("addressType").toLowerCase();
-  return raw === "housing" ? "housing" : "worksite";
+  return getSetting_("addressType").toLowerCase() === "housing" ? "housing" : "worksite";
+}
+
+function updateWidgetHeight() {
+  if (!fields.addressModal.hidden) {
+    updateModalHeight();
+    return;
+  }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      try {
+        const widgetHeight = fields.widgetRoot.getBoundingClientRect().height;
+        const bodyStyle = getComputedStyle(document.body);
+        const paddingTop = parseFloat(bodyStyle.paddingTop) || 0;
+        const paddingBottom = parseFloat(bodyStyle.paddingBottom) || 0;
+
+        JFCustomWidget.requestFrameResize({
+          height: Math.ceil(widgetHeight + paddingTop + paddingBottom)
+        });
+      } catch (err) {
+        console.warn("Could not resize widget:", err);
+      }
+    });
+  });
+}
+
+function updateModalHeight() {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      try {
+        const modalHeight = fields.modalCard.getBoundingClientRect().height;
+        const bodyStyle = getComputedStyle(document.body);
+        const paddingTop = parseFloat(bodyStyle.paddingTop) || 0;
+        const paddingBottom = parseFloat(bodyStyle.paddingBottom) || 0;
+
+        JFCustomWidget.requestFrameResize({
+          height: Math.ceil(modalHeight + paddingTop + paddingBottom + 24)
+        });
+      } catch (err) {
+        console.warn("Could not resize widget modal:", err);
+      }
+    });
+  });
 }
 
 async function getFieldValueById_(fieldId) {
@@ -120,10 +148,7 @@ async function getFieldValueById_(fieldId) {
   return await new Promise(resolve => {
     try {
       JFCustomWidget.getFieldsValueById([cleanFieldId], response => {
-
-        const data = Array.isArray(response?.data)
-          ? response.data
-          : [];
+        const data = Array.isArray(response?.data) ? response.data : [];
 
         const match = data.find(item =>
           String(item?.selector) === cleanFieldId ||
@@ -131,102 +156,13 @@ async function getFieldValueById_(fieldId) {
           String(item?.selector).includes(cleanFieldId)
         );
 
-        resolve(
-          String(
-            match?.value ??
-            data[0]?.value ??
-            ""
-          )
-        );
+        resolve(String(match?.value ?? data[0]?.value ?? ""));
       });
     } catch (err) {
       console.warn("Could not read field by ID:", err);
       resolve("");
     }
   });
-}
-
-function createBackButton() {
-  const button = document.createElement("button");
-
-  button.id = "addressBackBtn";
-  button.type = "button";
-  button.className = "back-btn";
-  button.textContent = "← Back";
-
-  fields.editorSection.before(button);
-  fields.backBtn = button;
-}
-
-function createCountStep() {
-  const section = document.createElement("section");
-
-  section.id = "countStep";
-  section.className = "editor";
-
-  section.innerHTML = `
-    <div>
-      <label id="countQuestion" for="addressCountInput"></label>
-      <input
-        id="addressCountInput"
-        type="number"
-        min="1"
-        step="1"
-        inputmode="numeric"
-      />
-    </div>
-
-    <div class="action-row">
-      <button id="addressNextBtn" type="button">Next →</button>
-    </div>
-
-    <div id="countError" class="error" aria-live="polite"></div>
-  `;
-
-  fields.editorSection.before(section);
-
-  fields.countStep = section;
-  fields.countQuestion = section.querySelector("#countQuestion");
-  fields.addressCountInput = section.querySelector("#addressCountInput");
-  fields.nextBtn = section.querySelector("#addressNextBtn");
-  fields.countError = section.querySelector("#countError");
-}
-
-function showCountStep() {
-  fields.countStep.hidden = false;
-  fields.backBtn.hidden = true;
-  fields.editorSection.hidden = true;
-
-  if (fields.listSection) {
-    fields.listSection.hidden = true;
-  }
-
-  updateWidgetHeight();
-}
-
-function showAddressStep() {
-  fields.countStep.hidden = true;
-  fields.backBtn.hidden = false;
-  fields.editorSection.hidden = false;
-
-  if (fields.listSection) {
-    fields.listSection.hidden = false;
-  }
-
-  updateWidgetHeight();
-}
-
-function backToCountStep() {
-  fields.addressCountInput.value = requiredAddressCount || "";
-
-  fields.formError.textContent = "";
-  fields.globalError.textContent = "";
-
-  exitEditMode();
-  clearForm();
-  showCountStep();
-
-  fields.addressCountInput.focus();
 }
 
 function populateStates() {
@@ -246,8 +182,7 @@ function configureMode() {
 
   fields.widgetTitle.textContent = config.title;
   fields.listHeading.textContent = config.listLabel;
-  fields.saveBtn.textContent = config.addLabel;
-  fields.countQuestion.textContent = config.countQuestion;
+  fields.addAddressBtn.textContent = config.addLabel;
 
   fields.housingFields.hidden = mode !== "housing";
   fields.worksiteFields.hidden = mode !== "worksite";
@@ -260,14 +195,89 @@ function setHousingType(value) {
 }
 
 function toggleOwnedBy() {
-  fields.ownedByWrap.hidden =
-    fields.ownedByEmployer.checked;
+  fields.ownedByWrap.hidden = fields.ownedByEmployer.checked;
 
   if (fields.ownedByEmployer.checked) {
     fields.ownedBy.value = "";
   }
 
+  if (!fields.addressModal.hidden) {
+    updateModalHeight();
+  }
+}
+
+function showStartSection() {
+  fields.startSection.hidden = false;
+  fields.listSection.hidden = true;
+  fields.addressModal.hidden = true;
   updateWidgetHeight();
+}
+
+function showAddressList() {
+  fields.startSection.hidden = true;
+  fields.listSection.hidden = false;
+  updateWidgetHeight();
+}
+
+async function reusePreviousAddresses() {
+  fields.startError.textContent = "";
+  fields.globalError.textContent = "";
+
+  const imported = await loadPrefilledAddresses();
+
+  addresses.length = 0;
+  addresses.push(...imported);
+
+  showAddressList();
+  renderAddresses();
+
+  if (!addresses.length) {
+    openAddressModal();
+  }
+}
+
+function startNewAddressList() {
+  addresses.length = 0;
+  prefillLoaded = true;
+
+  fields.startError.textContent = "";
+  fields.globalError.textContent = "";
+
+  showAddressList();
+  renderAddresses();
+  openAddressModal();
+}
+
+async function loadPrefilledAddresses() {
+  if (prefillLoaded) {
+    return [];
+  }
+
+  prefillLoaded = true;
+
+  const fieldId = getSetting_("prefillFieldId");
+
+  if (!fieldId) {
+    return [];
+  }
+
+  const raw = await getFieldValueById_(fieldId);
+  const cleaned = clean_(raw);
+
+  if (!cleaned) {
+    return [];
+  }
+
+  try {
+    return parsePrefill(cleaned);
+  } catch (err) {
+    console.warn("Could not parse prefilled addresses:", err);
+
+    fields.globalError.textContent =
+      "Some previous addresses could not be loaded. Please create the address list manually.";
+
+    return [];
+  }
 }
 
 function normalizeCounty(value) {
@@ -275,6 +285,8 @@ function normalizeCounty(value) {
 }
 
 function buildBaseAddress() {
+  const existing = editingIndex !== null ? addresses[editingIndex] : null;
+
   return {
     nickname: clean_(fields.nickname.value),
     street1: clean_(fields.street1.value),
@@ -284,9 +296,9 @@ function buildBaseAddress() {
     zip: clean_(fields.zip.value),
     county: normalizeCounty(fields.county.value),
 
-    latitude: null,
-    longitude: null,
-    source: "manual"
+    latitude: existing?.latitude ?? null,
+    longitude: existing?.longitude ?? null,
+    source: existing?.source || "manual"
   };
 }
 
@@ -298,83 +310,36 @@ function buildAddressObject() {
     return {
       type: "housing",
       ...base,
-
       housingType,
-
-      units:
-        fields.units.value === ""
-          ? null
-          : Number(fields.units.value),
-
-      occupancy:
-        fields.occupancy.value === ""
-          ? null
-          : Number(fields.occupancy.value)
+      units: fields.units.value === "" ? null : Number(fields.units.value),
+      occupancy: fields.occupancy.value === "" ? null : Number(fields.occupancy.value)
     };
   }
 
-  const existing =
-    editingIndex !== null
-      ? addresses[editingIndex]
-      : null;
-
-  const enteredStart =
-    clean_(fields.startDate.value);
-
-  const enteredEnd =
-    clean_(fields.endDate.value);
+  const existing = editingIndex !== null ? addresses[editingIndex] : null;
+  const enteredStart = clean_(fields.startDate.value);
+  const enteredEnd = clean_(fields.endDate.value);
 
   return {
     type: "worksite",
     ...base,
-
     street2: "",
+    ownedByEmployer: fields.ownedByEmployer.checked,
+    ownedBy: fields.ownedByEmployer.checked ? "" : clean_(fields.ownedBy.value),
 
-    ownedByEmployer:
-      fields.ownedByEmployer.checked,
+    startDate: enteredStart || existing?.startDate || "",
+    endDate: enteredEnd || existing?.endDate || "",
 
-    ownedBy:
-      fields.ownedByEmployer.checked
-        ? ""
-        : clean_(fields.ownedBy.value),
-
-    startDate:
-      enteredStart ||
-      (
-        existing?.source === "prefill"
-          ? existing.startDate || ""
-          : ""
-      ),
-
-    endDate:
-      enteredEnd ||
-      (
-        existing?.source === "prefill"
-          ? existing.endDate || ""
-          : ""
-      ),
-
-    workers:
-      fields.workers.value === ""
-        ? null
-        : Number(fields.workers.value)
+    workers: fields.workers.value === "" ? null : Number(fields.workers.value)
   };
 }
 
 function validateBase(item) {
-  if (
-    !item.street1 ||
-    !item.city ||
-    !item.state ||
-    !item.zip ||
-    !item.county
-  ) {
+  if (!item.street1 || !item.city || !item.state || !item.zip || !item.county) {
     return "Please complete all required address fields.";
   }
 
-  if (
-    !/^\d{5}(?:-\d{4})?$/.test(item.zip)
-  ) {
+  if (!/^\d{5}(?:-\d{4})?$/.test(item.zip)) {
     return "Please enter a valid 5-digit ZIP code or ZIP+4.";
   }
 
@@ -383,22 +348,13 @@ function validateBase(item) {
 
 function validateHousing(item) {
   const baseError = validateBase(item);
+  if (baseError) return baseError;
 
-  if (baseError) {
-    return baseError;
-  }
-
-  if (
-    !Number.isInteger(item.units) ||
-    item.units < 1
-  ) {
+  if (!Number.isInteger(item.units) || item.units < 1) {
     return "Units must be a whole number of at least 1.";
   }
 
-  if (
-    !Number.isInteger(item.occupancy) ||
-    item.occupancy < 1
-  ) {
+  if (!Number.isInteger(item.occupancy) || item.occupancy < 1) {
     return "Occupancy must be a whole number of at least 1.";
   }
 
@@ -407,15 +363,9 @@ function validateHousing(item) {
 
 function validateWorksite(item) {
   const baseError = validateBase(item);
+  if (baseError) return baseError;
 
-  if (baseError) {
-    return baseError;
-  }
-
-  if (
-    !item.ownedByEmployer &&
-    !item.ownedBy
-  ) {
+  if (!item.ownedByEmployer && !item.ownedBy) {
     return "Please enter who owns the worksite.";
   }
 
@@ -427,13 +377,7 @@ function validateWorksite(item) {
     return "End date cannot be before start date.";
   }
 
-  if (
-    item.workers !== null &&
-    (
-      !Number.isInteger(item.workers) ||
-      item.workers < 0
-    )
-  ) {
+  if (item.workers !== null && (!Number.isInteger(item.workers) || item.workers < 0)) {
     return "Workers must be a whole number of 0 or more.";
   }
 
@@ -441,153 +385,74 @@ function validateWorksite(item) {
 }
 
 function validateAddress(item) {
-  return item.type === "housing"
-    ? validateHousing(item)
-    : validateWorksite(item);
+  return item.type === "housing" ? validateHousing(item) : validateWorksite(item);
 }
 
-function saveAddress() {
-  if (
-    editingIndex === null &&
-    addresses.length >= requiredAddressCount
-  ) {
-    fields.formError.textContent =
-      `You already added ${requiredAddressCount} ${
-        requiredAddressCount === 1
-          ? MODES[getMode()].singular.toLowerCase()
-          : MODES[getMode()].plural.toLowerCase()
-      }. Remove one before adding another.`;
-
-    return;
-  }
-
-  const item = buildAddressObject();
-  const error = validateAddress(item);
-
-  if (error) {
-    fields.formError.textContent = error;
-    return;
-  }
-
-  if (editingIndex === null) {
-    addresses.push(item);
-  } else {
-    addresses[editingIndex] = item;
-  }
-
-  fields.formError.textContent = "";
-  fields.globalError.textContent = "";
-
-  exitEditMode();
-  clearForm();
-  renderAddresses();
-}
-
-function editAddress(index) {
-  const item = addresses[index];
-
-  if (!item) {
-    return;
-  }
-
+function openAddressModal(index = null) {
   editingIndex = index;
+  fields.formError.textContent = "";
 
-  fields.nickname.value =
-    item.nickname || "";
+  const config = MODES[getMode()];
 
-  fields.street1.value =
-    item.street1 || "";
+  if (index === null) {
+    clearForm();
 
-  fields.street2.value =
-    item.street2 || "";
+    fields.modalTitle.textContent = config.addModalTitle;
+    fields.saveAddressBtn.textContent = "Save Address";
+    fields.saveAnotherBtn.hidden = false;
+  } else {
+    populateAddressForm(addresses[index]);
 
-  fields.city.value =
-    item.city || "";
+    fields.modalTitle.textContent = config.editModalTitle;
+    fields.saveAddressBtn.textContent = "Save Changes";
+    fields.saveAnotherBtn.hidden = true;
+  }
 
-  fields.state.value =
-    item.state || "";
+  fields.addressModal.hidden = false;
+  updateModalHeight();
 
-  fields.zip.value =
-    item.zip || "";
+  requestAnimationFrame(() => {
+    fields.street1.focus();
+  });
+}
 
-  fields.county.value =
-    item.county || "";
+function closeAddressModal() {
+  fields.addressModal.hidden = true;
+  editingIndex = null;
+  fields.formError.textContent = "";
+
+  clearForm();
+  updateWidgetHeight();
+}
+
+function populateAddressForm(item) {
+  if (!item) return;
+
+  fields.nickname.value = item.nickname || "";
+  fields.street1.value = item.street1 || "";
+  fields.street2.value = item.street2 || "";
+  fields.city.value = item.city || "";
+  fields.state.value = item.state || "";
+  fields.zip.value = item.zip || "";
+  fields.county.value = item.county || "";
 
   if (item.type === "housing") {
-    setHousingType(
-      item.housingType ||
-      "Employer-owned"
-    );
-
-    fields.units.value =
-      item.units ?? "";
-
-    fields.occupancy.value =
-      item.occupancy ?? "";
+    setHousingType(item.housingType || "Employer-owned");
+    fields.units.value = item.units ?? "";
+    fields.occupancy.value = item.occupancy ?? "";
   } else {
-    fields.ownedByEmployer.checked =
-      item.ownedByEmployer !== false;
-
-    fields.ownedBy.value =
-      item.ownedBy || "";
+    fields.ownedByEmployer.checked = item.ownedByEmployer !== false;
+    fields.ownedBy.value = item.ownedBy || "";
 
     fields.startDate.value =
-      /^\d{4}-\d{2}-\d{2}$/.test(item.startDate || "")
-        ? item.startDate
-        : "";
+      /^\d{4}-\d{2}-\d{2}$/.test(item.startDate || "") ? item.startDate : "";
 
     fields.endDate.value =
-      /^\d{4}-\d{2}-\d{2}$/.test(item.endDate || "")
-        ? item.endDate
-        : "";
+      /^\d{4}-\d{2}-\d{2}$/.test(item.endDate || "") ? item.endDate : "";
 
-    fields.workers.value =
-      item.workers ?? "";
-
+    fields.workers.value = item.workers ?? "";
     toggleOwnedBy();
   }
-
-  fields.saveBtn.textContent =
-    "Save Changes";
-
-  fields.cancelEditBtn.hidden =
-    false;
-
-  fields.formError.textContent =
-    "";
-
-  fields.editorSection.scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
-
-  fields.street1.focus();
-}
-
-function deleteAddress(index) {
-  addresses.splice(index, 1);
-
-  if (editingIndex === index) {
-    exitEditMode();
-    clearForm();
-  } else if (
-    editingIndex !== null &&
-    index < editingIndex
-  ) {
-    editingIndex--;
-  }
-
-  renderAddresses();
-}
-
-function exitEditMode() {
-  editingIndex = null;
-
-  fields.cancelEditBtn.hidden =
-    true;
-
-  fields.saveBtn.textContent =
-    MODES[getMode()].addLabel;
 }
 
 function clearForm() {
@@ -602,13 +467,9 @@ function clearForm() {
   fields.units.value = "";
   fields.occupancy.value = "";
 
-  setHousingType(
-    "Employer-owned"
-  );
+  setHousingType("Employer-owned");
 
-  fields.ownedByEmployer.checked =
-    true;
-
+  fields.ownedByEmployer.checked = true;
   fields.ownedBy.value = "";
   fields.startDate.value = "";
   fields.endDate.value = "";
@@ -619,108 +480,123 @@ function clearForm() {
   fields.formError.textContent = "";
 }
 
+function saveAddress({ addAnother = false } = {}) {
+  const item = buildAddressObject();
+  const error = validateAddress(item);
+
+  if (error) {
+    fields.formError.textContent = error;
+    updateModalHeight();
+    return;
+  }
+
+  if (editingIndex === null) {
+    addresses.push(item);
+  } else {
+    addresses[editingIndex] = item;
+  }
+
+  fields.formError.textContent = "";
+  fields.globalError.textContent = "";
+
+  renderAddresses();
+
+  if (addAnother) {
+    editingIndex = null;
+    clearForm();
+
+    fields.modalTitle.textContent = MODES[getMode()].addModalTitle;
+    fields.saveAddressBtn.textContent = "Save Address";
+    fields.saveAnotherBtn.hidden = false;
+
+    updateModalHeight();
+
+    requestAnimationFrame(() => {
+      fields.street1.focus();
+    });
+
+    return;
+  }
+
+  closeAddressModal();
+}
+
+function editAddress(index) {
+  if (!addresses[index]) return;
+  openAddressModal(index);
+}
+
+function deleteAddress(index) {
+  addresses.splice(index, 1);
+
+  if (editingIndex === index) {
+    editingIndex = null;
+  } else if (editingIndex !== null && index < editingIndex) {
+    editingIndex--;
+  }
+
+  renderAddresses();
+}
+
 function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(
-      /[&<>"']/g,
-      char => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-      })[char]
-    );
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[char]);
 }
 
 function formatDateForCard(value) {
-  if (!value) {
-    return "";
-  }
+  if (!value) return "";
 
-  if (
-    /^\d{1,2}\/\d{1,2}$/.test(value)
-  ) {
+  if (/^\d{1,2}\/\d{1,2}$/.test(value)) {
     return value;
   }
 
-  const [year, month, day] =
-    value.split("-");
+  const [year, month, day] = value.split("-");
 
-  return year && month && day
-    ? `${month}/${day}/${year}`
-    : value;
-}
-
-function buildCardTitle(item, index) {
-  if (item.nickname) {
-    return item.nickname;
-  }
-
-  return item.type === "housing"
-    ? `Housing ${index + 1}`
-    : `Worksite ${index + 1}`;
+  return year && month && day ? `${month}/${day}/${year}` : value;
 }
 
 function buildCardDetails(item) {
   if (item.type === "housing") {
     return `${item.housingType || ""}${
-      item.units != null
-        ? ` • Units: ${item.units}`
-        : ""
+      item.units != null ? ` • Units: ${item.units}` : ""
     }${
-      item.occupancy != null
-        ? ` • Occupancy: ${item.occupancy}`
-        : ""
+      item.occupancy != null ? ` • Occupancy: ${item.occupancy}` : ""
     }`;
   }
 
-  const owner =
-    item.ownedByEmployer
-      ? "Employer-owned"
-      : item.ownedBy
-        ? `Owned by: ${item.ownedBy}`
-        : "";
-
-  const dates =
-    item.startDate || item.endDate
-      ? `${
-          formatDateForCard(item.startDate) || "?"
-        } – ${
-          formatDateForCard(item.endDate) || "?"
-        }`
+  const owner = item.ownedByEmployer
+    ? "Employer-owned"
+    : item.ownedBy
+      ? `Owned by: ${item.ownedBy}`
       : "";
 
-  const workers =
-    item.workers != null
-      ? `${item.workers} worker${
-          item.workers === 1
-            ? ""
-            : "s"
-        }`
-      : "";
+  const dates = item.startDate || item.endDate
+    ? `${formatDateForCard(item.startDate) || "?"} – ${formatDateForCard(item.endDate) || "?"}`
+    : "";
 
-  return [
-    owner,
-    dates,
-    workers
-  ]
-    .filter(Boolean)
-    .join(" • ");
+  const workers = item.workers != null
+    ? `${item.workers} worker${item.workers === 1 ? "" : "s"}`
+    : "";
+
+  return [owner, dates, workers].filter(Boolean).join(" • ");
 }
 
 function renderAddresses() {
   fields.addressList.innerHTML = "";
-
-  fields.addressCount.textContent = requiredAddressCount
-    ? `${addresses.length}/${requiredAddressCount}`
-    : addresses.length;
+  fields.addressCount.textContent = addresses.length;
 
   if (!addresses.length) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
     empty.textContent = MODES[getMode()].emptyLabel;
     fields.addressList.appendChild(empty);
+
+    updateWidgetHeight();
     return;
   }
 
@@ -740,13 +616,8 @@ function renderAddresses() {
 
     card.innerHTML = `
       <div class="address-main">
-        <div class="address-primary" title="${escapeHtml(fullAddress)}">
-          ${escapeHtml(fullAddress)}
-        </div>
-
-        <div class="address-details">
-          ${escapeHtml(details)}
-        </div>
+        <div class="address-primary" title="${escapeHtml(fullAddress)}">${escapeHtml(fullAddress)}</div>
+        <div class="address-details">${escapeHtml(details)}</div>
       </div>
 
       <div class="card-actions">
@@ -779,10 +650,7 @@ function parseUSAddress(value) {
   }
 
   if (raw.includes("¦")) {
-    const parts = raw
-      .split("¦")
-      .map(part => part.trim())
-      .filter(Boolean);
+    const parts = raw.split("¦").map(part => part.trim()).filter(Boolean);
 
     if (parts.length >= 5) {
       return {
@@ -796,7 +664,6 @@ function parseUSAddress(value) {
     }
   }
 
-  // Keep the existing comma-based fallback for legacy/manual data.
   const normalized = raw.replace(/,\s*,+/g, ", ");
   const parts = normalized.split(",").map(part => part.trim()).filter(Boolean);
 
@@ -834,150 +701,77 @@ function parseUSAddress(value) {
 }
 
 function parseHousingLine(line) {
-  const metaMatch =
-    line.match(
-      /\((.*?)\)\s*$/
-    );
+  const metaMatch = line.match(/\((.*?)\)\s*$/);
+  const meta = metaMatch?.[1] || "";
 
-  const meta =
-    metaMatch?.[1] || "";
+  const addressPart = metaMatch
+    ? line.slice(0, metaMatch.index).trim()
+    : line.trim();
 
-  const addressPart =
-    metaMatch
-      ? line
-          .slice(
-            0,
-            metaMatch.index
-          )
-          .trim()
-      : line.trim();
-
-  const unitsMatch =
-    meta.match(
-      /Units:\s*(\d+)/i
-    );
-
-  const occupancyMatch =
-    meta.match(
-      /Occupancy:\s*(\d+)/i
-    );
+  const unitsMatch = meta.match(/Units:\s*(\d+)/i);
+  const occupancyMatch = meta.match(/Occupancy:\s*(\d+)/i);
 
   const typeText =
-    meta
-      .split("|")[0]
-      ?.trim() ||
+    meta.split("|")[0]?.trim() ||
     "Employer-owned";
 
   return {
     type: "housing",
     nickname: "",
 
-    ...parseUSAddress(
-      addressPart
-    ),
+    ...parseUSAddress(addressPart),
 
     latitude: null,
     longitude: null,
     source: "prefill",
 
-    housingType:
-      /rented/i.test(typeText)
-        ? "Rented"
-        : "Employer-owned",
-
-    units:
-      unitsMatch
-        ? Number(unitsMatch[1])
-        : null,
-
-    occupancy:
-      occupancyMatch
-        ? Number(
-            occupancyMatch[1]
-          )
-        : null
+    housingType: /rented/i.test(typeText) ? "Rented" : "Employer-owned",
+    units: unitsMatch ? Number(unitsMatch[1]) : null,
+    occupancy: occupancyMatch ? Number(occupancyMatch[1]) : null
   };
 }
 
 function parseWorksiteLine(line) {
-  const workersMatch =
-    line.match(
-      /\((\d+)\s+workers?\)\s*$/i
-    );
+  const workersMatch = line.match(/\((\d+)\s+workers?\)\s*$/i);
+  const workers = workersMatch ? Number(workersMatch[1]) : null;
 
-  const workers =
-    workersMatch
-      ? Number(workersMatch[1])
-      : null;
+  const withoutWorkers = line
+    .replace(/\s*\(\d+\s+workers?\)\s*$/i, "")
+    .trim();
 
-  const withoutWorkers =
-    line
-      .replace(
-        /\s*\(\d+\s+workers?\)\s*$/i,
-        ""
-      )
-      .trim();
+  const dateMatch = withoutWorkers.match(
+    /:\s*(\d{1,2}\/\d{1,2})-(\d{1,2}\/\d{1,2})\s*$/
+  );
 
-  const dateMatch =
-    withoutWorkers.match(
-      /:\s*(\d{1,2}\/\d{1,2})-(\d{1,2}\/\d{1,2})\s*$/
-    );
+  const startDate = dateMatch?.[1] || "";
+  const endDate = dateMatch?.[2] || "";
 
-  const startDate =
-    dateMatch?.[1] || "";
+  const withoutDates = dateMatch
+    ? withoutWorkers.slice(0, dateMatch.index).trim()
+    : withoutWorkers;
 
-  const endDate =
-    dateMatch?.[2] || "";
+  const firstColon = withoutDates.indexOf(":");
 
-  const withoutDates =
-    dateMatch
-      ? withoutWorkers
-          .slice(
-            0,
-            dateMatch.index
-          )
-          .trim()
-      : withoutWorkers;
+  const ownedBy = firstColon >= 0
+    ? withoutDates.slice(0, firstColon).trim()
+    : "";
 
-  const firstColon =
-    withoutDates.indexOf(":");
-
-  const ownedBy =
-    firstColon >= 0
-      ? withoutDates
-          .slice(
-            0,
-            firstColon
-          )
-          .trim()
-      : "";
-
-  const addressPart =
-    firstColon >= 0
-      ? withoutDates
-          .slice(
-            firstColon + 1
-          )
-          .trim()
-      : withoutDates;
+  const addressPart = firstColon >= 0
+    ? withoutDates.slice(firstColon + 1).trim()
+    : withoutDates;
 
   return {
     type: "worksite",
     nickname: "",
 
-    ...parseUSAddress(
-      addressPart
-    ),
+    ...parseUSAddress(addressPart),
 
     latitude: null,
     longitude: null,
     source: "prefill",
 
-    ownedByEmployer:
-      !ownedBy,
-
+    ownedByEmployer: !ownedBy,
     ownedBy,
-
     startDate,
     endDate,
     workers
@@ -991,28 +785,19 @@ function parsePrefill(raw) {
     .split(/\r?\n/)
     .map(line => line.trim())
     .filter(Boolean)
-    .map(
-      line =>
-        mode === "housing"
-          ? parseHousingLine(line)
-          : parseWorksiteLine(line)
+    .map(line =>
+      mode === "housing"
+        ? parseHousingLine(line)
+        : parseWorksiteLine(line)
     )
     .filter(Boolean);
 }
 
 function parseDateParts(value) {
-  if (!value) {
-    return "";
-  }
+  if (!value) return "";
 
-  if (
-    /^\d{4}-\d{2}-\d{2}$/.test(
-      value
-    )
-  ) {
-    const [, month, day] =
-      value.split("-");
-
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [, month, day] = value.split("-");
     return `${month}/${day}`;
   }
 
@@ -1020,266 +805,96 @@ function parseDateParts(value) {
 }
 
 function serializeHousing(item) {
-  const street =
-    [
-      item.street1,
-      item.street2
-    ]
-      .filter(Boolean)
-      .join(", ");
+  const street = [item.street1, item.street2].filter(Boolean).join(", ");
 
   return `${street}, ${item.city}, ${item.state} ${item.zip}, ${item.county} (${item.housingType} | Units: ${item.units} | Occupancy: ${item.occupancy})`;
 }
 
 function serializeWorksite(item) {
-  const owner =
-    item.ownedByEmployer
-      ? ""
-      : `${item.ownedBy}: `;
+  const owner = item.ownedByEmployer ? "" : `${item.ownedBy}: `;
 
-  const dates =
-    item.startDate ||
-    item.endDate
-      ? `: ${parseDateParts(
-          item.startDate
-        )}-${parseDateParts(
-          item.endDate
-        )}`
-      : "";
+  const dates = item.startDate || item.endDate
+    ? `: ${parseDateParts(item.startDate)}-${parseDateParts(item.endDate)}`
+    : "";
 
-  const workers =
-    item.workers != null
-      ? ` (${item.workers} worker${
-          item.workers === 1
-            ? ""
-            : "s"
-        })`
-      : "";
+  const workers = item.workers != null
+    ? ` (${item.workers} worker${item.workers === 1 ? "" : "s"})`
+    : "";
 
   return `${owner}${item.street1}, ${item.city}, ${item.state} ${item.zip}, ${item.county}${dates}${workers}`;
 }
 
 function buildSubmissionValue() {
   return addresses
-    .map(
-      item =>
-        item.type === "housing"
-          ? serializeHousing(item)
-          : serializeWorksite(item)
+    .map(item =>
+      item.type === "housing"
+        ? serializeHousing(item)
+        : serializeWorksite(item)
     )
     .join("\n");
 }
 
-async function loadPrefillAfterCount() {
-  console.log("Attempting address prefill load...");
-
-  if (prefillLoaded) {
-    console.log("Prefill already loaded.");
-    return;
-  }
-
-  const fieldId = getSetting_("prefillFieldId");
-
-  console.log("Configured prefillFieldId:", fieldId);
-
-  if (!fieldId) {
-    prefillLoaded = true;
-    return;
-  }
-
-  const raw =
-    await getFieldValueById_(
-      fieldId
-    );
-
-  const cleaned =
-    clean_(raw);
-
-  if (!cleaned) {
-    prefillLoaded = true;
-
-    console.log(
-      "No prefill data found when Next was clicked."
-    );
-
-    return;
-  }
-
-  try {
-    const imported =
-      parsePrefill(cleaned);
-
-    addresses.length = 0;
-
-    addresses.push(
-      ...imported
-    );
-
-    prefillLoaded = true;
-
-    console.log(
-      `Loaded ${imported.length} prefilled address(es).`
-    );
-  } catch (err) {
-    console.warn(
-      "Could not parse prefilled addresses:",
-      err
-    );
-
-    fields.globalError.textContent =
-      "Some prefilled addresses could not be loaded. Please review the address list carefully.";
-
-    prefillLoaded = true;
-  }
-}
-
-async function continueToAddresses() {
-  console.log("ADDRESS NEXT CLICKED");
-
-  const count = Number(fields.addressCountInput.value);
-
-  console.log("Required address count:", count);
-
-  if (
-    !Number.isInteger(count) ||
-    count < 1
-  ) {
-    fields.countError.textContent =
-      `Please enter the number of ${MODES[getMode()].plural.toLowerCase()}.`;
-
-    return;
-  }
-
-  fields.countError.textContent = "";
-  fields.globalError.textContent = "";
-
-  requiredAddressCount =
-    count;
-
-  await loadPrefillAfterCount();
-
-  showAddressStep();
-  renderAddresses();
-
-  if (
-    addresses.length >
-    requiredAddressCount
-  ) {
-    fields.globalError.textContent =
-      `We found ${addresses.length} prefilled ${MODES[getMode()].plural.toLowerCase()}, but you entered ${requiredAddressCount}. Please remove ${addresses.length - requiredAddressCount} or go back and correct the count.`;
-  }
-}
-
 function wireEvents() {
+  fields.reuseAddressesBtn.addEventListener("click", reusePreviousAddresses);
+  fields.newAddressListBtn.addEventListener("click", startNewAddressList);
 
-  fields.saveBtn.addEventListener(
-    "click",
-    saveAddress
-  );
+  fields.addAddressBtn.addEventListener("click", () => openAddressModal());
 
-  fields.cancelEditBtn.addEventListener(
-    "click",
-    () => {
-      exitEditMode();
-      clearForm();
-    }
-  );
+  fields.closeModalBtn.addEventListener("click", closeAddressModal);
+  fields.cancelModalBtn.addEventListener("click", closeAddressModal);
 
-  fields.nextBtn.addEventListener(
-    "click",
-    continueToAddresses
-  );
+  fields.saveAddressBtn.addEventListener("click", () => {
+    saveAddress({ addAnother: false });
+  });
 
-  fields.addressCountInput.addEventListener(
-    "keydown",
-    event => {
-      if (
-        event.key === "Enter"
-      ) {
-        event.preventDefault();
+  fields.saveAnotherBtn.addEventListener("click", () => {
+    saveAddress({ addAnother: true });
+  });
 
-        continueToAddresses();
-      }
-    }
-  );
+  fields.housingTypeSelect.addEventListener("change", () => {
+    setHousingType(fields.housingTypeSelect.value);
+  });
 
-  fields.backBtn.addEventListener(
-  "click",
-  backToCountStep
-);
+  fields.ownedByEmployer.addEventListener("change", toggleOwnedBy);
 }
 
 async function initializeWidget() {
-  if (initialized) {
-    return;
-  }
-
+  if (initialized) return;
   initialized = true;
 
-  createCountStep();
-  createBackButton();
   populateStates();
   configureMode();
   setHousingType("Employer-owned");
   toggleOwnedBy();
   wireEvents();
-  showCountStep();
+
+  showStartSection();
   renderAddresses();
 }
 
-JFCustomWidget.subscribe(
-  "ready",
-  async function () {
-    await initializeWidget();
+JFCustomWidget.subscribe("ready", async function () {
+  await initializeWidget();
 
-    JFCustomWidget.subscribe(
-      "submit",
-      function () {
-        const config =
-          MODES[getMode()];
+  JFCustomWidget.subscribe("submit", function () {
+    const config = MODES[getMode()];
 
-        if (
-          !requiredAddressCount
-        ) {
-          fields.globalError.textContent =
-            `Please enter the number of ${config.plural.toLowerCase()} and click Next.`;
+    if (!addresses.length) {
+      fields.globalError.textContent =
+        `Please add at least one ${config.singular.toLowerCase()}.`;
 
-          JFCustomWidget.sendSubmit({
-            valid: false,
-            value: ""
-          });
+      JFCustomWidget.sendSubmit({
+        valid: false,
+        value: ""
+      });
 
-          return;
-        }
+      return;
+    }
 
-        if (
-          addresses.length !==
-          requiredAddressCount
-        ) {
-          fields.globalError.textContent =
-            `Please add exactly ${requiredAddressCount} ${
-              requiredAddressCount === 1
-                ? config.singular.toLowerCase()
-                : config.plural.toLowerCase()
-            }. You currently have ${addresses.length}.`;
+    fields.globalError.textContent = "";
 
-          JFCustomWidget.sendSubmit({
-            valid: false,
-            value: ""
-          });
-
-          return;
-        }
-
-        fields.globalError.textContent =
-          "";
-
-        JFCustomWidget.sendSubmit({
-          valid: true,
-          value:
-            buildSubmissionValue()
-        });
-      }
-    );
-  }
-);
+    JFCustomWidget.sendSubmit({
+      valid: true,
+      value: buildSubmissionValue()
+    });
+  });
+});
