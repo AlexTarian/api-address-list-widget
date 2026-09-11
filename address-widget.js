@@ -616,6 +616,7 @@ function renderAddresses() {
     empty.textContent = MODES[getMode()].emptyLabel;
     fields.addressList.appendChild(empty);
 
+    syncPdfField();
     updateWidgetHeight();
     return;
   }
@@ -652,6 +653,7 @@ function renderAddresses() {
     fields.addressList.appendChild(card);
   });
 
+  syncPdfField();
   updateWidgetHeight();
 }
 
@@ -864,6 +866,27 @@ function formatWorksiteForPdf(item) {
   const details = [owner, dates, workers].filter(Boolean).join(" | ");
 
   return `${base}${details ? ` (${details})` : ""}`;
+}
+
+function syncPdfField() {
+  const pdfFieldId = getSetting_("pdfFieldId");
+
+  if (!pdfFieldId) {
+    return;
+  }
+
+  const pdfValue = buildHumanReadableValue();
+
+  try {
+    JFCustomWidget.setFieldsValueById([
+      {
+        selector: pdfFieldId,
+        value: pdfValue
+      }
+    ]);
+  } catch (err) {
+    console.warn("Could not update PDF summary field:", err);
+  }
 }
 
 function wireEvents() {
