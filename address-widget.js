@@ -818,6 +818,54 @@ function parsePrefill(raw) {
     .filter(Boolean);
 }
 
+function buildHumanReadableValue() {
+  return addresses
+    .map(item =>
+      item.type === "housing"
+        ? formatHousingForPdf(item)
+        : formatWorksiteForPdf(item)
+    )
+    .join("\n");
+}
+
+function formatHousingForPdf(item) {
+  const street = [item.street1, item.street2].filter(Boolean).join(", ");
+
+  const base = `${street}, ${item.city}, ${item.state} ${item.zip}, ${item.county}`;
+
+  if (item.isPrimary) {
+    return `${base} (Primary Address)`;
+  }
+
+  return `${base} (${item.housingType} | Units: ${item.units} | Occupancy: ${item.occupancy})`;
+}
+
+function formatWorksiteForPdf(item) {
+  const base = `${item.street1}, ${item.city}, ${item.state} ${item.zip}, ${item.county}`;
+
+  if (item.isPrimary) {
+    return `${base} (Primary Address)`;
+  }
+
+  const owner = item.ownedByEmployer
+    ? "Employer-owned"
+    : `Owned by ${item.ownedBy}`;
+
+  const dates =
+    item.startDate || item.endDate
+      ? `${item.startDate || "?"}-${item.endDate || "?"}`
+      : "";
+
+  const workers =
+    item.workers != null
+      ? `${item.workers} worker${item.workers === 1 ? "" : "s"}`
+      : "";
+
+  const details = [owner, dates, workers].filter(Boolean).join(" | ");
+
+  return `${base}${details ? ` (${details})` : ""}`;
+}
+
 function wireEvents() {
   fields.reuseAddressesBtn.addEventListener("click", reusePreviousAddresses);
   fields.newAddressListBtn.addEventListener("click", startNewAddressList);
@@ -876,9 +924,19 @@ JFCustomWidget.subscribe("ready", async function () {
 
     fields.globalError.textContent = "";
 
+    const jsonValue = JSON.stringify(addresses);
+    const pdfValue = buildHumanReadableValue();
+
+    JFCustomWidget.setFieldsValueById([
+      {
+        id: getSetting_("pdfFieldId"),
+        value: pdfValue
+      }
+    ]);
+
     JFCustomWidget.sendSubmit({
       valid: true,
-      value: JSON.stringify(addresses)
+      value: jsonValue
     });
   });
 });
