@@ -818,47 +818,6 @@ function parsePrefill(raw) {
     .filter(Boolean);
 }
 
-function parseDateParts(value) {
-  if (!value) return "";
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [, month, day] = value.split("-");
-    return `${month}/${day}`;
-  }
-
-  return value;
-}
-
-function serializeHousing(item) {
-  const street = [item.street1, item.street2].filter(Boolean).join(", ");
-
-  return `${street}, ${item.city}, ${item.state} ${item.zip}, ${item.county} (${item.housingType} | Units: ${item.units} | Occupancy: ${item.occupancy})`;
-}
-
-function serializeWorksite(item) {
-  const owner = item.ownedByEmployer ? "" : `${item.ownedBy}: `;
-
-  const dates = item.startDate || item.endDate
-    ? `: ${parseDateParts(item.startDate)}-${parseDateParts(item.endDate)}`
-    : "";
-
-  const workers = item.workers != null
-    ? ` (${item.workers} worker${item.workers === 1 ? "" : "s"})`
-    : "";
-
-  return `${owner}${item.street1}, ${item.city}, ${item.state} ${item.zip}, ${item.county}${dates}${workers}`;
-}
-
-function buildSubmissionValue() {
-  return addresses
-    .map(item =>
-      item.type === "housing"
-        ? serializeHousing(item)
-        : serializeWorksite(item)
-    )
-    .join("\n");
-}
-
 function wireEvents() {
   fields.reuseAddressesBtn.addEventListener("click", reusePreviousAddresses);
   fields.newAddressListBtn.addEventListener("click", startNewAddressList);
@@ -919,7 +878,7 @@ JFCustomWidget.subscribe("ready", async function () {
 
     JFCustomWidget.sendSubmit({
       valid: true,
-      value: buildSubmissionValue()
+      value: JSON.stringify(addresses)
     });
   });
 });
