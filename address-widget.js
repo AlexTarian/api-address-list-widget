@@ -96,15 +96,16 @@ function getMode() {
 }
 
 function updateWidgetHeight() {
-  if (!fields.addressModal.hidden) {
-    updateModalHeight();
-    return;
-  }
-
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
+      if (!fields.addressModal.hidden) {
+        updateModalHeight();
+        return;
+      }
+
       try {
         const widgetHeight = fields.widgetRoot.getBoundingClientRect().height;
+
         const bodyStyle = getComputedStyle(document.body);
         const paddingTop = parseFloat(bodyStyle.paddingTop) || 0;
         const paddingBottom = parseFloat(bodyStyle.paddingBottom) || 0;
