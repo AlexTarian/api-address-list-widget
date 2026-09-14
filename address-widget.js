@@ -60,7 +60,7 @@ const fields = {
 
   addressSearch: document.getElementById("addressSearch"),
   addressSuggestions: document.getElementById("addressSuggestions"),
-  addressSearchWrap: document.querySelector(".address-search-wrap"),
+  addressSearchRow: document.getElementById("addressSearchRow"),
 
   dropPinBtn: document.getElementById("dropPinBtn"),
   pinHelpText: document.getElementById("pinHelpText"),
@@ -647,7 +647,8 @@ function openAddressModal(index = null) {
   const config = MODES[getMode()];
   const isEdit = index !== null;
 
-  fields.addressSearchWrap.hidden = isEdit;
+  fields.addressSearchRow.hidden = isEdit;
+  fields.pinHelpText.hidden = isEdit || getMode() !== "worksite";
 
   if (!isEdit) {
     clearForm();
