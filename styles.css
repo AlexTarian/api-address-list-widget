@@ -24,6 +24,34 @@ body {
   background: #fff;
 }
 
+.address-search-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.address-search-row .address-search-wrap {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.pin-btn {
+  flex: 0 0 auto;
+  width: 42px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.pin-help-text {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .widget {
   max-width: 900px;
   margin: 0 auto;
