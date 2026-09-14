@@ -58,6 +58,7 @@ const fields = {
 
   addressSearch: document.getElementById("addressSearch"),
   addressSuggestions: document.getElementById("addressSuggestions"),
+  addressSearchWrap: document.querySelector(".address-search-wrap"),
 
   nickname: document.getElementById("nickname"),
   street1: document.getElementById("street1"),
@@ -611,14 +612,20 @@ function openAddressModal(index = null) {
   fields.formError.textContent = "";
 
   const config = MODES[getMode()];
+  const isEdit = index !== null;
 
-  if (index === null) {
+  fields.addressSearchWrap.hidden = isEdit;
+
+  if (!isEdit) {
     clearForm();
 
     fields.modalTitle.textContent = config.addModalTitle;
     fields.saveAddressBtn.textContent = "Save Address";
     fields.saveAnotherBtn.hidden = false;
   } else {
+    hideAddressSuggestions();
+    fields.addressSearch.value = "";
+
     populateAddressForm(addresses[index]);
 
     fields.modalTitle.textContent = config.editModalTitle;
