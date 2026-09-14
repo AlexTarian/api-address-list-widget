@@ -4,6 +4,7 @@ let editingIndex = null;
 let initialized = false;
 let prefillLoaded = false;
 let housingType = "Employer-owned";
+let selectedLookup = null;
 
 const MODES = {
   housing: {
@@ -309,9 +310,9 @@ function buildBaseAddress() {
     zip: clean_(fields.zip.value),
     county: normalizeCounty(fields.county.value),
 
-    latitude: existing?.latitude ?? null,
-    longitude: existing?.longitude ?? null,
-    source: existing?.source || "manual",
+    latitude: selectedLookup?.lat ?? existing?.latitude ?? null,
+    longitude: selectedLookup?.lon ?? existing?.longitude ?? null,
+    source: selectedLookup ? "lookup" : (existing?.source || "manual"),
     isPrimary: existing?.isPrimary ?? false
   };
 }
@@ -492,6 +493,7 @@ function clearForm() {
   toggleOwnedBy();
 
   fields.formError.textContent = "";
+  selectedLookup = null;
 }
 
 function saveAddress({ addAnother = false } = {}) {
