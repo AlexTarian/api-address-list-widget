@@ -50,33 +50,43 @@
           </button>
         </div>
 
-        <div class="address-search-wrap">
-          <label class="sr-only" for="addressSearch">Search for an address</label>
+        <div class="address-search-row">
+          <div class="address-search-wrap">
+            <label class="sr-only" for="addressSearch">Search for an address</label>
 
-          <input
-            id="addressSearch"
-            type="search"
-            autocomplete="off"
-            placeholder="Search for an address..."
-            aria-label="Search for an address"
-            aria-autocomplete="list"
-            aria-controls="addressSuggestions"
-            aria-expanded="false"
-          />
+            <input
+              id="addressSearch"
+              type="search"
+              autocomplete="off"
+              placeholder="Search for an address or city..."
+              aria-label="Search for an address or city"
+              aria-autocomplete="list"
+              aria-controls="addressSuggestions"
+              aria-expanded="false"
+            />
 
-          <div
-            id="addressSuggestions"
-            class="address-suggestions"
-            role="listbox"
-            hidden
-          ></div>
+            <div
+              id="addressSuggestions"
+              class="address-suggestions"
+              role="listbox"
+              hidden
+            ></div>
+          </div>
+
+          <button
+            id="dropPinBtn"
+            class="pin-btn secondary-btn"
+            type="button"
+            disabled
+            aria-label="Drop pin on map"
+            title="Drop pin on map"
+          >
+            🗺️
+          </button>
         </div>
 
-        <div id="pinControls" class="pin-controls">
-          <button id="dropPinBtn" class="secondary-btn" type="button" disabled>📍</button>
-          <div id="pinHelpText" class="pin-help-text">
-            Search for and select a nearby city or address before using the map.
-          </div>
+        <div id="pinHelpText" class="pin-help-text">
+          Search for and select a nearby city or address before using the map.
         </div>
 
         <div id="mapSection" class="map-section" hidden>
