@@ -26,14 +26,36 @@ body {
 
 .address-search-row {
   display: flex;
+  flex-direction: row;
   align-items: stretch;
   gap: 8px;
+  width: 100%;
   margin-bottom: 4px;
 }
 
 .address-search-row .address-search-wrap {
-  flex: 1;
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
   margin-bottom: 0;
+}
+
+.address-search-row .address-search-wrap input {
+  width: 100%;
+}
+
+.address-search-row .pin-btn {
+  flex: 0 0 42px;
+  width: 42px;
+  min-width: 42px;
+  max-width: 42px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
 }
 
 .pin-btn {
