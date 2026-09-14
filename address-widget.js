@@ -5,6 +5,9 @@ let initialized = false;
 let prefillLoaded = false;
 let housingType = "Employer-owned";
 let selectedLookup = null;
+let addressSearchTimer = null;
+let activeSearchController = null;
+let activeSuggestionIndex = -1;
 
 const MODES = {
   housing: {
@@ -53,6 +56,9 @@ const fields = {
   saveAddressBtn: document.getElementById("saveAddressBtn"),
   saveAnotherBtn: document.getElementById("saveAnotherBtn"),
 
+  addressSearch: document.getElementById("addressSearch"),
+  addressSuggestions: document.getElementById("addressSuggestions"),
+
   nickname: document.getElementById("nickname"),
   street1: document.getElementById("street1"),
   street2: document.getElementById("street2"),
@@ -94,6 +100,199 @@ function getSetting_(name) {
 
 function getMode() {
   return getSetting_("addressType").toLowerCase() === "housing" ? "housing" : "worksite";
+}
+
+function hideAddressSuggestions() {
+  fields.addressSuggestions.hidden = true;
+  fields.addressSuggestions.innerHTML = "";
+  fields.addressSearch.setAttribute("aria-expanded", "false");
+  activeSuggestionIndex = -1;
+}
+
+async function searchAddresses(query) {
+  const apiKey = getSetting_("geoapifyApiKey");
+
+  if (!apiKey || query.length < 5) {
+    hideAddressSuggestions();
+    return;
+  }
+
+  if (activeSearchController) {
+    activeSearchController.abort();
+  }
+
+  activeSearchController = new AbortController();
+
+  try {
+    const params = new URLSearchParams({
+      text: query,
+      format: "json",
+      filter: "countrycode:us",
+      lang: "en",
+      limit: "6",
+      apiKey
+    });
+
+    const response = await fetch(
+      `https://api.geoapify.com/v1/geocode/autocomplete?${params.toString()}`,
+      {
+        method: "GET",
+        signal: activeSearchController.signal
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Address lookup returned HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    renderAddressSuggestions(
+      Array.isArray(data.results)
+        ? data.results
+        : []
+    );
+  } catch (err) {
+    if (err.name === "AbortError") {
+      return;
+    }
+
+    console.warn("Address lookup failed:", err);
+    hideAddressSuggestions();
+  }
+}
+
+function renderAddressSuggestions(results) {
+  fields.addressSuggestions.innerHTML = "";
+  activeSuggestionIndex = -1;
+
+  if (!results.length) {
+    hideAddressSuggestions();
+    return;
+  }
+
+  results.forEach((result, index) => {
+    const button = document.createElement("button");
+
+    button.type = "button";
+    button.className = "address-suggestion";
+    button.setAttribute("role", "option");
+    button.dataset.index = String(index);
+
+    const primary =
+      result.address_line1 ||
+      result.formatted ||
+      "Address";
+
+    const secondary = [
+      result.city || result.town || result.village || "",
+      result.state_code || "",
+      result.postcode || ""
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    button.innerHTML = `
+      <span class="address-suggestion-primary">
+        ${escapeHtml(primary)}
+      </span>
+
+      ${
+        secondary
+          ? `<span class="address-suggestion-secondary">${escapeHtml(secondary)}</span>`
+          : ""
+      }
+    `;
+
+    button.addEventListener("click", () => {
+      applyAddressResult(result);
+    });
+
+    fields.addressSuggestions.appendChild(button);
+  });
+
+  fields.addressSuggestions.hidden = false;
+  fields.addressSearch.setAttribute("aria-expanded", "true");
+}
+
+function applyAddressResult(result) {
+  selectedLookup = {
+    lat: Number.isFinite(Number(result.lat))
+      ? Number(result.lat)
+      : null,
+
+    lon: Number.isFinite(Number(result.lon))
+      ? Number(result.lon)
+      : null
+  };
+
+  fields.street1.value =
+    result.address_line1 ||
+    "";
+
+  fields.city.value =
+    result.city ||
+    result.town ||
+    result.village ||
+    result.hamlet ||
+    "";
+
+  fields.state.value =
+    clean_(result.state_code).toUpperCase();
+
+  fields.zip.value =
+    result.postcode ||
+    "";
+
+  fields.county.value =
+    normalizeLookupCounty(result);
+
+  fields.addressSearch.value =
+    result.formatted ||
+    result.address_line1 ||
+    "";
+
+  hideAddressSuggestions();
+
+  fields.formError.textContent = "";
+}
+
+function normalizeLookupCounty(result) {
+  let county = clean_(result.county);
+
+  if (!county) {
+    return "";
+  }
+
+  county = county.toUpperCase();
+
+  if (
+    county.endsWith(" COUNTY") ||
+    county.endsWith(" PARISH") ||
+    county.endsWith(" BOROUGH") ||
+    county.endsWith(" CENSUS AREA") ||
+    county.endsWith(" MUNICIPALITY") ||
+    county.endsWith(" PLANNING REGION")
+  ) {
+    return county;
+  }
+
+  return `${county} COUNTY`;
+}
+
+function handleAddressSearchInput() {
+  clearTimeout(addressSearchTimer);
+
+  const query = clean_(fields.addressSearch.value);
+
+  if (query.length < 5) {
+    hideAddressSuggestions();
+    return;
+  }
+
+  addressSearchTimer = setTimeout(() => {
+    searchAddresses(query);
+  }, 400);
 }
 
 function updateWidgetHeight() {
@@ -258,6 +457,10 @@ function startNewAddressList() {
   showAddressList();
   renderAddresses();
   openAddressModal();
+}
+
+function invalidateLookupOnManualEdit() {
+  selectedLookup = null;
 }
 
 async function loadPrefilledAddresses() {
@@ -493,6 +696,10 @@ function clearForm() {
   toggleOwnedBy();
 
   fields.formError.textContent = "";
+
+  fields.addressSearch.value = "";
+  hideAddressSuggestions();
+  
   selectedLookup = null;
 }
 
@@ -908,6 +1115,43 @@ function wireEvents() {
   });
 
   fields.ownedByEmployer.addEventListener("change", toggleOwnedBy);
+
+  fields.addressSearch.addEventListener("input", handleAddressSearchInput);
+
+  fields.addressSearch.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      hideAddressSuggestions();
+    }
+  });
+
+  document.addEventListener("click", event => {
+    if (
+      !fields.addressSearch.contains(event.target) &&
+      !fields.addressSuggestions.contains(event.target)
+    ) {
+      hideAddressSuggestions();
+    }
+  });
+
+  [
+    fields.street1,
+    fields.street2,
+    fields.city,
+    fields.state,
+    fields.zip,
+    fields.county
+  ].forEach(field => {
+    field.addEventListener(
+      "input",
+      invalidateLookupOnManualEdit
+    );
+
+    field.addEventListener(
+      "change",
+      invalidateLookupOnManualEdit
+    );
+  });
+  
 }
 
 async function initializeWidget() {
