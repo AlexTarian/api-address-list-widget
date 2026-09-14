@@ -12,6 +12,10 @@
   --shadow: 0 12px 32px rgba(0, 0, 0, .22);
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   font-family: Arial, sans-serif;
   margin: 0;
