@@ -3,11 +3,13 @@ const addresses = [];
 let editingIndex = null;
 let initialized = false;
 let prefillLoaded = false;
+let initialAddresses = [];
 let housingType = "Employer-owned";
-let selectedLookup = null;
 let addressSearchTimer = null;
 let activeSearchController = null;
 let activeSuggestionIndex = -1;
+let selectedLookup = null;
+let selectedMapCenter = null;
 
 const MODES = {
   housing: {
@@ -59,6 +61,9 @@ const fields = {
   addressSearch: document.getElementById("addressSearch"),
   addressSuggestions: document.getElementById("addressSuggestions"),
   addressSearchWrap: document.querySelector(".address-search-wrap"),
+
+  dropPinBtn: document.getElementById("dropPinBtn"),
+  pinHelpText: document.getElementById("pinHelpText"),
 
   nickname: document.getElementById("nickname"),
   street1: document.getElementById("street1"),
@@ -217,15 +222,30 @@ function renderAddressSuggestions(results) {
 }
 
 function applyAddressResult(result) {
-  selectedLookup = {
-    lat: Number.isFinite(Number(result.lat))
-      ? Number(result.lat)
-      : null,
+  const lat = Number.isFinite(Number(result.lat))
+    ? Number(result.lat)
+    : null;
 
-    lon: Number.isFinite(Number(result.lon))
-      ? Number(result.lon)
-      : null
-  };
+  const lon = Number.isFinite(Number(result.lon))
+    ? Number(result.lon)
+    : null;
+
+  selectedLookup = lat !== null && lon !== null
+    ? { lat, lon }
+    : null;
+
+  selectedMapCenter = lat !== null && lon !== null
+    ? {
+        lat,
+        lon,
+        label:
+          result.formatted ||
+          result.city ||
+          result.town ||
+          result.village ||
+          ""
+      }
+    : null;
 
   fields.street1.value =
     result.address_line1 ||
@@ -253,8 +273,8 @@ function applyAddressResult(result) {
     result.address_line1 ||
     "";
 
+  updateDropPinState();
   hideAddressSuggestions();
-
   fields.formError.textContent = "";
 }
 
@@ -283,6 +303,9 @@ function normalizeLookupCounty(result) {
 
 function handleAddressSearchInput() {
   clearTimeout(addressSearchTimer);
+
+  selectedMapCenter = null;
+  updateDropPinState();
 
   const query = clean_(fields.addressSearch.value);
 
@@ -391,6 +414,7 @@ function populateStates() {
 function configureMode() {
   const mode = getMode();
   const config = MODES[mode];
+  const isWorksite = mode === "worksite";
 
   fields.widgetTitle.textContent = config.title;
   fields.listHeading.textContent = config.listLabel;
@@ -399,6 +423,12 @@ function configureMode() {
   fields.housingFields.hidden = mode !== "housing";
   fields.worksiteFields.hidden = mode !== "worksite";
   fields.street2Wrap.hidden = mode !== "housing";
+
+  fields.dropPinBtn.hidden = !isWorksite;
+
+  if (fields.pinHelpText) {
+    fields.pinHelpText.hidden = !isWorksite;
+  }
 }
 
 function setHousingType(value) {
@@ -440,6 +470,8 @@ async function reusePreviousAddresses() {
   addresses.length = 0;
   addresses.push(...imported);
 
+  initialAddresses = structuredClone(imported);
+
   showAddressList();
   renderAddresses();
 
@@ -450,6 +482,7 @@ async function reusePreviousAddresses() {
 
 function startNewAddressList() {
   addresses.length = 0;
+  initialAddresses = [];
   prefillLoaded = true;
 
   fields.startError.textContent = "";
@@ -708,6 +741,8 @@ function clearForm() {
   hideAddressSuggestions();
   
   selectedLookup = null;
+  selectedMapCenter = null;
+  updateDropPinState();
 }
 
 function saveAddress({ addAnother = false } = {}) {
@@ -1030,20 +1065,56 @@ function parsePrefill(raw) {
 
       return {
         ...item,
-        isPrimary: index === 0
+        isPrimary: index === 0,
+        baselineId: `prefill-${index}`
       };
     })
     .filter(Boolean);
 }
 
 function buildHumanReadableValue() {
-  return addresses
-    .map(item =>
+  const status = getListChangeStatus();
+
+  const statusLine =
+    status === "new"
+      ? "CHANGE STATUS: New address list"
+      : status === "changed"
+        ? "CHANGE STATUS: ⚠ Changes made"
+        : "CHANGE STATUS: No changes";
+
+  const currentLines = addresses.map(item => {
+    const changeType = getAddressChangeType(item);
+
+    const prefix =
+      changeType === "added"
+        ? "➕ "
+        : changeType === "changed"
+          ? "⚠ "
+          : "";
+
+    const value =
       item.type === "housing"
         ? formatHousingForPdf(item)
-        : formatWorksiteForPdf(item)
-    )
-    .join("\n");
+        : formatWorksiteForPdf(item);
+
+    return `${prefix}${value}`;
+  });
+
+  const deletedLines = getDeletedAddresses().map(item => {
+    const value =
+      item.type === "housing"
+        ? formatHousingForPdf(item)
+        : formatWorksiteForPdf(item);
+
+    return `❌ DELETE: ${value}`;
+  });
+
+  return [
+    statusLine,
+    "",
+    ...currentLines,
+    ...(deletedLines.length ? ["", "Deleted Addresses:", ...deletedLines] : [])
+  ].join("\n");
 }
 
 function formatHousingForPdf(item) {
@@ -1098,6 +1169,93 @@ function syncPdfField() {
   } catch (err) {
     console.warn("Could not update PDF summary field:", err);
   }
+}
+
+function normalizeAddressForComparison(item) {
+  const base = {
+    type: item.type,
+    street1: clean_(item.street1),
+    street2: clean_(item.street2),
+    city: clean_(item.city),
+    state: clean_(item.state),
+    zip: clean_(item.zip),
+    county: clean_(item.county)
+  };
+
+  if (item.type === "housing") {
+    return {
+      ...base,
+      housingType: item.housingType || "",
+      units: item.units ?? null,
+      occupancy: item.occupancy ?? null
+    };
+  }
+
+  return {
+    ...base,
+    ownedByEmployer: item.ownedByEmployer !== false,
+    ownedBy: clean_(item.ownedBy),
+    startDate: item.startDate || "",
+    endDate: item.endDate || "",
+    workers: item.workers ?? null
+  };
+}
+
+function addressesEqual(a, b) {
+  return JSON.stringify(normalizeAddressForComparison(a)) ===
+         JSON.stringify(normalizeAddressForComparison(b));
+}
+
+function updateDropPinState() {
+  const canDropPin =
+    getMode() === "worksite" &&
+    selectedMapCenter !== null;
+
+  fields.dropPinBtn.disabled = !canDropPin;
+}
+
+function getAddressChangeType(item) {
+  if (!initialAddresses.length) {
+    return "new";
+  }
+
+  if (!item.baselineId) {
+    return "added";
+  }
+
+  const original = initialAddresses.find(
+    original => original.baselineId === item.baselineId
+  );
+
+  if (!original) {
+    return "added";
+  }
+
+  return addressesEqual(item, original)
+    ? "unchanged"
+    : "changed";
+}
+
+function getListChangeStatus() {
+  if (!initialAddresses.length) {
+    return "new";
+  }
+
+  if (addresses.length !== initialAddresses.length) {
+    return "changed";
+  }
+
+  const changed = addresses.some(item =>
+    getAddressChangeType(item) !== "unchanged"
+  );
+
+  return changed ? "changed" : "unchanged";
+}
+
+function getDeletedAddresses() {
+  return initialAddresses.filter(original =>
+    !addresses.some(item => item.baselineId === original.baselineId)
+  );
 }
 
 function wireEvents() {
@@ -1170,7 +1328,7 @@ async function initializeWidget() {
   setHousingType("Employer-owned");
   toggleOwnedBy();
   wireEvents();
-
+  updateDropPinState();
   showStartSection();
   renderAddresses();
 }
@@ -1195,7 +1353,9 @@ JFCustomWidget.subscribe("ready", async function () {
 
     fields.globalError.textContent = "";
 
-    const jsonValue = JSON.stringify(addresses);
+    const jsonValue = JSON.stringify(
+      addresses.map(({ baselineId, ...item }) => item)
+    );
 
     JFCustomWidget.sendSubmit({
       valid: true,
