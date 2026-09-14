@@ -50,6 +50,28 @@
           </button>
         </div>
 
+        <div class="address-search-wrap">
+          <label class="sr-only" for="addressSearch">Search for an address</label>
+
+          <input
+            id="addressSearch"
+            type="search"
+            autocomplete="off"
+            placeholder="Search for an address..."
+            aria-label="Search for an address"
+            aria-autocomplete="list"
+            aria-controls="addressSuggestions"
+            aria-expanded="false"
+          />
+
+          <div
+            id="addressSuggestions"
+            class="address-suggestions"
+            role="listbox"
+            hidden
+          ></div>
+        </div>
+
         <div class="modal-body">
           <div class="grid">
             <!-- Nickname intentionally preserved for possible future use -->
@@ -87,7 +109,7 @@
 
             <div>
               <label class="sr-only" for="county">County</label>
-              <input id="county" type="text" autocomplete="off" placeholder="County / Planning Region *" aria-label="County / Planning Region" />
+              <input id="county" type="text" autocomplete="off" placeholder="County*" aria-label="County" />
             </div>
           </div>
 
@@ -161,6 +183,6 @@
   </div>
 
   <script src="states.js"></script>
-  <script src="address-widget.js?v=6"></script>
+  <script src="address-widget.js?v=7"></script>
 </body>
 </html>
