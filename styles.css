@@ -286,7 +286,10 @@ button:disabled {
 }
 
 .address-list {
-  overflow: visible;
+  max-height: 400px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .address-card {
@@ -509,6 +512,10 @@ button:disabled {
 }
 
 @media (max-width: 620px) {
+  .address-list {
+    max-height: 55vh;
+  }
+  
   .address-suggestions {
     max-height: 220px;
   }
