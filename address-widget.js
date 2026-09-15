@@ -557,7 +557,8 @@ function buildBaseAddress() {
     latitude: selectedLookup?.lat ?? existing?.latitude ?? null,
     longitude: selectedLookup?.lon ?? existing?.longitude ?? null,
     source: selectedLookup?.source || (selectedLookup ? "lookup" : (existing?.source || "manual")),
-    isPrimary: existing?.isPrimary ?? false
+    isPrimary: existing?.isPrimary ?? false,
+    baselineId: existing?.baselineId ?? null
   };
 }
 
