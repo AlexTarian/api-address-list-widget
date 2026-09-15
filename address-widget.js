@@ -1395,7 +1395,6 @@ function closePinMap() {
   pendingPin = null;
   updateModalHeight();
 }
-
 function applyPinResult(result, pin) {
   selectedLookup = {
     lat: pin.lat,
@@ -1408,9 +1407,12 @@ function applyPinResult(result, pin) {
     result?.street ||
     "";
 
+  const coordinateText =
+    `${pin.lat.toFixed(6)}, ${pin.lon.toFixed(6)}`;
+
   fields.street1.value =
     streetAddress ||
-    `${pin.lat.toFixed(6)}, ${pin.lon.toFixed(6)}`;
+    coordinateText;
 
   if (result) {
     fields.city.value =
@@ -1429,6 +1431,14 @@ function applyPinResult(result, pin) {
 
     fields.county.value =
       normalizeLookupCounty(result);
+
+    fields.addressSearch.value =
+      result.formatted ||
+      result.address_line1 ||
+      streetAddress ||
+      coordinateText;
+  } else {
+    fields.addressSearch.value = coordinateText;
   }
 
   closePinMap();
