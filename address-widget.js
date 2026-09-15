@@ -10,6 +10,9 @@ let activeSearchController = null;
 let activeSuggestionIndex = -1;
 let selectedLookup = null;
 let selectedMapCenter = null;
+let mapInstance = null;
+let mapMarker = null;
+let pendingPin = null;
 
 const MODES = {
   housing: {
@@ -64,6 +67,10 @@ const fields = {
 
   dropPinBtn: document.getElementById("dropPinBtn"),
   pinHelpText: document.getElementById("pinHelpText"),
+  mapSection: document.getElementById("mapSection"),
+  map: document.getElementById("map"),
+  confirmPinBtn: document.getElementById("confirmPinBtn"),
+  cancelPinBtn: document.getElementById("cancelPinBtn"),
 
   nickname: document.getElementById("nickname"),
   street1: document.getElementById("street1"),
@@ -231,7 +238,7 @@ function applyAddressResult(result) {
     : null;
 
   selectedLookup = lat !== null && lon !== null
-    ? { lat, lon }
+    ? { lat, lon, source: "lookup" }
     : null;
 
   selectedMapCenter = lat !== null && lon !== null
@@ -549,7 +556,7 @@ function buildBaseAddress() {
 
     latitude: selectedLookup?.lat ?? existing?.latitude ?? null,
     longitude: selectedLookup?.lon ?? existing?.longitude ?? null,
-    source: selectedLookup ? "lookup" : (existing?.source || "manual"),
+    source: selectedLookup?.source || (selectedLookup ? "lookup" : (existing?.source || "manual")),
     isPrimary: existing?.isPrimary ?? false
   };
 }
@@ -744,6 +751,14 @@ function clearForm() {
   selectedLookup = null;
   selectedMapCenter = null;
   updateDropPinState();
+
+  fields.mapSection.hidden = true;
+  pendingPin = null;
+
+  if (mapMarker) {
+    mapInstance.removeLayer(mapMarker);
+    mapMarker = null;
+  }
 }
 
 function saveAddress({ addAnother = false } = {}) {
@@ -1259,6 +1274,152 @@ function getDeletedAddresses() {
   );
 }
 
+function openPinMap() {
+  if (!selectedMapCenter) return;
+
+  const apiKey = getSetting_("geoapifyApiKey");
+  if (!apiKey) return;
+
+  fields.mapSection.hidden = false;
+
+  const { lat, lon } = selectedMapCenter;
+
+  if (!mapInstance) {
+    mapInstance = L.map(fields.map).setView([lat, lon], 14);
+
+    const isRetina = L.Browser.retina;
+
+    const baseUrl =
+      "https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png?apiKey={apiKey}";
+
+    const retinaUrl =
+      "https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}@2x.png?apiKey={apiKey}";
+
+    L.tileLayer(isRetina ? retinaUrl : baseUrl, {
+      apiKey,
+      maxZoom: 20,
+      attribution:
+        'Powered by <a href="https://www.geoapify.com/" target="_blank">Geoapify</a> | ' +
+        '<a href="https://openmaptiles.org/" target="_blank">© OpenMapTiles</a> ' +
+        '<a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap</a>'
+    }).addTo(mapInstance);
+
+    mapInstance.on("click", event => {
+      setPendingPin(event.latlng.lat, event.latlng.lng);
+    });
+  } else {
+    mapInstance.setView([lat, lon], 14);
+  }
+
+  setPendingPin(lat, lon);
+
+  requestAnimationFrame(() => {
+    mapInstance.invalidateSize();
+    updateModalHeight();
+  });
+}
+
+function setPendingPin(lat, lon) {
+  pendingPin = { lat, lon };
+
+  if (!mapMarker) {
+    mapMarker = L.marker([lat, lon], {
+      draggable: true
+    }).addTo(mapInstance);
+
+    mapMarker.on("dragend", () => {
+      const position = mapMarker.getLatLng();
+
+      pendingPin = {
+        lat: position.lat,
+        lon: position.lng
+      };
+    });
+  } else {
+    mapMarker.setLatLng([lat, lon]);
+  }
+
+  fields.confirmPinBtn.disabled = false;
+}
+
+async function confirmPinLocation() {
+  if (!pendingPin) return;
+
+  const apiKey = getSetting_("geoapifyApiKey");
+  if (!apiKey) return;
+
+  const params = new URLSearchParams({
+    lat: String(pendingPin.lat),
+    lon: String(pendingPin.lon),
+    format: "json",
+    lang: "en",
+    apiKey
+  });
+
+  try {
+    fields.confirmPinBtn.disabled = true;
+
+    const response = await fetch(
+      `https://api.geoapify.com/v1/geocode/reverse?${params.toString()}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Reverse geocoding returned HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const result = Array.isArray(data.results) ? data.results[0] : null;
+
+    applyPinResult(result, pendingPin);
+  } catch (err) {
+    console.warn("Reverse geocoding failed:", err);
+
+    applyPinResult(null, pendingPin);
+  } finally {
+    fields.confirmPinBtn.disabled = false;
+  }
+}
+
+function closePinMap() {
+  fields.mapSection.hidden = true;
+  pendingPin = null;
+  updateModalHeight();
+}
+
+function applyPinResult(result, pin) {
+  selectedLookup = {
+    lat: pin.lat,
+    lon: pin.lon,
+    source: "map"
+  };
+
+  if (result) {
+    fields.street1.value =
+      result.address_line1 ||
+      result.street ||
+      "";
+
+    fields.city.value =
+      result.city ||
+      result.town ||
+      result.village ||
+      result.hamlet ||
+      "";
+
+    fields.state.value =
+      clean_(result.state_code).toUpperCase();
+
+    fields.zip.value =
+      result.postcode ||
+      "";
+
+    fields.county.value =
+      normalizeLookupCounty(result);
+  }
+
+  closePinMap();
+}
+
 function wireEvents() {
   fields.reuseAddressesBtn.addEventListener("click", reusePreviousAddresses);
   fields.newAddressListBtn.addEventListener("click", startNewAddressList);
@@ -1317,6 +1478,10 @@ function wireEvents() {
       invalidateLookupOnManualEdit
     );
   });
+
+  fields.dropPinBtn.addEventListener("click", openPinMap);
+  fields.confirmPinBtn.addEventListener("click", confirmPinLocation);
+  fields.cancelPinBtn.addEventListener("click", closePinMap);
   
 }
 
