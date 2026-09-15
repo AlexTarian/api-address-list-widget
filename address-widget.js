@@ -721,14 +721,18 @@ function populateAddressForm(item) {
   }
 }
 
-function clearForm() {
+function clearForm({ preserveLocation = false } = {}) {
   fields.nickname.value = "";
+
   fields.street1.value = "";
   fields.street2.value = "";
-  fields.city.value = "";
-  fields.state.value = "";
-  fields.zip.value = "";
-  fields.county.value = "";
+
+  if (!preserveLocation) {
+    fields.city.value = "";
+    fields.state.value = "";
+    fields.zip.value = "";
+    fields.county.value = "";
+  }
 
   fields.units.value = "";
   fields.occupancy.value = "";
@@ -745,17 +749,23 @@ function clearForm() {
 
   fields.formError.textContent = "";
 
-  fields.addressSearch.value = "";
+  if (!preserveLocation) {
+    fields.addressSearch.value = "";
+  }
   hideAddressSuggestions();
-  
+
   selectedLookup = null;
-  selectedMapCenter = null;
+
+  if (!preserveLocation) {
+    selectedMapCenter = null;
+  }
+
   updateDropPinState();
 
   fields.mapSection.hidden = true;
   pendingPin = null;
 
-  if (mapMarker) {
+  if (mapMarker && mapInstance) {
     mapInstance.removeLayer(mapMarker);
     mapMarker = null;
   }
@@ -784,7 +794,7 @@ function saveAddress({ addAnother = false } = {}) {
 
   if (addAnother) {
     editingIndex = null;
-    clearForm();
+    clearForm({ preserveLocation: true });
 
     fields.modalTitle.textContent = MODES[getMode()].addModalTitle;
     fields.saveAddressBtn.textContent = "Save Address";
@@ -1393,12 +1403,16 @@ function applyPinResult(result, pin) {
     source: "map"
   };
 
-  if (result) {
-    fields.street1.value =
-      result.address_line1 ||
-      result.street ||
-      "";
+  const streetAddress =
+    result?.address_line1 ||
+    result?.street ||
+    "";
 
+  fields.street1.value =
+    streetAddress ||
+    `${pin.lat.toFixed(6)}, ${pin.lon.toFixed(6)}`;
+
+  if (result) {
     fields.city.value =
       result.city ||
       result.town ||
