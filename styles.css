@@ -227,11 +227,12 @@ button:disabled {
 }
 
 .secondary-btn {
-  background: #D1DDF0;
+  background: #F7F7F7;
+  color: #000000;
 }
 
 .secondary-btn:hover {
-  background: #DFE7F7;
+  background: #FAFAFA;
 }
 
 .start-section {
