@@ -4,7 +4,7 @@ let editingIndex = null;
 let initialized = false;
 let prefillLoaded = false;
 let initialAddresses = [];
-let housingType = "Employer-owned";
+let housingType = "";
 let addressSearchTimer = null;
 let activeSearchController = null;
 let activeSuggestionIndex = -1;
@@ -446,7 +446,11 @@ function configureMode() {
 }
 
 function setHousingType(value) {
-  housingType = value === "Rented" ? "Rented" : "Employer-owned";
+  housingType =
+    value === "Employer-owned" || value === "Rented"
+      ? value
+      : "";
+
   fields.housingTypeSelect.value = housingType;
 }
 
@@ -621,6 +625,10 @@ function validateHousing(item) {
   const baseError = validateBase(item);
   if (baseError) return baseError;
 
+  if (!["Employer-owned", "Rented"].includes(item.housingType)) {
+    return "Please select the housing type.";
+  }
+
   if (!Number.isInteger(item.units) || item.units < 1) {
     return "Units must be a whole number of at least 1.";
   }
@@ -636,7 +644,7 @@ function validateWorksite(item) {
   const baseError = validateBase(item);
   if (baseError) return baseError;
 
-  if (!item.ownedByEmployer && !item.ownedBy) {
+  if (item.ownedByEmployer === false && !item.ownedBy) {
     return "Please enter who owns the worksite.";
   }
 
@@ -715,7 +723,7 @@ function populateAddressForm(item) {
   fields.county.value = item.county || "";
 
   if (item.type === "housing") {
-    setHousingType(item.housingType || "Employer-owned");
+    setHousingType(item.housingType || "");
     fields.units.value = item.units ?? "";
     fields.occupancy.value = item.occupancy ?? "";
   } else {
@@ -749,7 +757,7 @@ function clearForm({ preserveLocation = false } = {}) {
   fields.units.value = "";
   fields.occupancy.value = "";
 
-  setHousingType("Employer-owned");
+  setHousingType("");
 
   fields.ownedByEmployer.checked = true;
   fields.ownedBy.value = "";
@@ -864,16 +872,34 @@ function formatDateForCard(value) {
 }
 
 function buildCardDetails(item) {
-  if (item.isPrimary) {
-    return "Primary Address";
+  if (item.type === "housing") {
+    const details = [];
+
+    if (item.housingType) {
+      details.push(item.housingType);
+    }
+
+    if (item.units != null) {
+      details.push(`Units: ${item.units}`);
+    }
+
+    if (item.occupancy != null) {
+      details.push(`Occupancy: ${item.occupancy}`);
+    }
+
+    if (item.isPrimary) {
+      details.push("Primary Address");
+    }
+
+    if (!item.housingType || item.units == null || item.occupancy == null) {
+      details.push("⚠ Missing Housing Details");
+    }
+
+    return details.join(" • ");
   }
 
-  if (item.type === "housing") {
-    return `${item.housingType || ""}${
-      item.units != null ? ` • Units: ${item.units}` : ""
-    }${
-      item.occupancy != null ? ` • Occupancy: ${item.occupancy}` : ""
-    }`;
+  if (item.isPrimary) {
+    return "Primary Address";
   }
 
   const owner = item.ownedByEmployer
@@ -1022,9 +1048,13 @@ function parseHousingLine(line) {
   const unitsMatch = meta.match(/Units:\s*(\d+)/i);
   const occupancyMatch = meta.match(/Occupancy:\s*(\d+)/i);
 
-  const typeText =
-    meta.split("|")[0]?.trim() ||
-    "Employer-owned";
+  let parsedHousingType = "";
+
+  if (/employer-owned/i.test(meta)) {
+    parsedHousingType = "Employer-owned";
+  } else if (/rented/i.test(meta)) {
+    parsedHousingType = "Rented";
+  }
 
   return {
     type: "housing",
@@ -1036,7 +1066,7 @@ function parseHousingLine(line) {
     longitude: null,
     source: "prefill",
 
-    housingType: /rented/i.test(typeText) ? "Rented" : "Employer-owned",
+    housingType: parsedHousingType,
     units: unitsMatch ? Number(unitsMatch[1]) : null,
     occupancy: occupancyMatch ? Number(occupancyMatch[1]) : null
   };
@@ -1157,14 +1187,31 @@ function buildHumanReadableValue() {
 
 function formatHousingForPdf(item) {
   const street = [item.street1, item.street2].filter(Boolean).join(", ");
-
   const base = `${street}, ${item.city}, ${item.state} ${item.zip}, ${item.county}`;
 
-  if (item.isPrimary) {
-    return `${base} (Primary Address)`;
+  const details = [];
+
+  if (item.housingType) {
+    details.push(item.housingType);
   }
 
-  return `${base} (${item.housingType} | Units: ${item.units} | Occupancy: ${item.occupancy})`;
+  if (item.units != null) {
+    details.push(`Units: ${item.units}`);
+  }
+
+  if (item.occupancy != null) {
+    details.push(`Occupancy: ${item.occupancy}`);
+  }
+
+  if (item.isPrimary) {
+    details.push("Primary Address");
+  }
+
+  if (!item.housingType || item.units == null || item.occupancy == null) {
+    details.push("⚠ Missing Housing Details");
+  }
+
+  return `${base}${details.length ? ` (${details.join(" | ")})` : ""}`;
 }
 
 function formatWorksiteForPdf(item) {
@@ -1538,7 +1585,7 @@ async function initializeWidget() {
 
   populateStates();
   configureMode();
-  setHousingType("Employer-owned");
+  setHousingType("");
   toggleOwnedBy();
   wireEvents();
   updateDropPinState();
@@ -1555,6 +1602,25 @@ JFCustomWidget.subscribe("ready", async function () {
     if (!addresses.length) {
       fields.globalError.textContent =
         `Please add at least one ${config.singular.toLowerCase()}.`;
+
+      JFCustomWidget.sendSubmit({
+        valid: false,
+        value: ""
+      });
+
+      return;
+    }
+
+    const invalidIndex = addresses.findIndex(item => validateAddress(item));
+
+    if (invalidIndex !== -1) {
+      const invalidItem = addresses[invalidIndex];
+      const error = validateAddress(invalidItem);
+
+      fields.globalError.textContent =
+        `Address ${invalidIndex + 1} needs attention: ${error}`;
+
+      editAddress(invalidIndex);
 
       JFCustomWidget.sendSubmit({
         valid: false,
