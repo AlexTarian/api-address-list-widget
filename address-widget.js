@@ -13,6 +13,7 @@ let selectedMapCenter = null;
 let mapInstance = null;
 let mapMarker = null;
 let pendingPin = null;
+let addressWorkflowStarted = false;
 
 const MODES = {
   housing: {
@@ -254,9 +255,15 @@ function applyAddressResult(result) {
       }
     : null;
 
-  fields.street1.value =
-    result.address_line1 ||
-    "";
+  const isAddressLevel = [
+    "building",
+    "amenity",
+    "street"
+  ].includes(result.result_type);
+
+  fields.street1.value = isAddressLevel
+    ? (result.address_line1 || "")
+    : "";
 
   fields.city.value =
     result.city ||
@@ -469,6 +476,7 @@ function showAddressList() {
 }
 
 async function reusePreviousAddresses() {
+  addressWorkflowStarted = true;
   fields.startError.textContent = "";
   fields.globalError.textContent = "";
 
@@ -488,6 +496,7 @@ async function reusePreviousAddresses() {
 }
 
 function startNewAddressList() {
+  addressWorkflowStarted = true;
   addresses.length = 0;
   initialAddresses = [];
   prefillLoaded = true;
@@ -502,6 +511,8 @@ function startNewAddressList() {
 
 function invalidateLookupOnManualEdit() {
   selectedLookup = null;
+  selectedMapCenter = null;
+  updateDropPinState();
 }
 
 async function loadPrefilledAddresses() {
@@ -1183,6 +1194,8 @@ function formatWorksiteForPdf(item) {
 }
 
 function syncPdfField() {
+  if (!addressWorkflowStarted) return;
+  
   const mode = getMode();
   const pdfValue = buildHumanReadableValue();
 
@@ -1401,6 +1414,15 @@ function applyPinResult(result, pin) {
     lat: pin.lat,
     lon: pin.lon,
     source: "map"
+  };
+
+  selectedMapCenter = {
+    lat: pin.lat,
+    lon: pin.lon,
+    label:
+      result?.formatted ||
+      fields.city.value ||
+      "Pinned location"
   };
 
   const streetAddress =
