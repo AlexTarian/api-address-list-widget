@@ -931,6 +931,7 @@ function renderAddresses() {
     empty.textContent = MODES[getMode()].emptyLabel;
     fields.addressList.appendChild(empty);
 
+    syncWidgetValue();
     syncPdfField();
     updateWidgetHeight();
     return;
@@ -968,6 +969,7 @@ function renderAddresses() {
     fields.addressList.appendChild(card);
   });
 
+  syncWidgetValue();
   syncPdfField();
   updateWidgetHeight();
 }
@@ -1238,6 +1240,17 @@ function formatWorksiteForPdf(item) {
   const details = [owner, dates, workers].filter(Boolean).join(" | ");
 
   return `${base}${details ? ` (${details})` : ""}`;
+}
+
+function syncWidgetValue() {
+  const valid = addresses.length > 0 &&
+    addresses.every(item => !validateAddress(item));
+
+  const value = valid
+    ? JSON.stringify(addresses.map(({ baselineId, ...item }) => item))
+    : "";
+
+  JFCustomWidget.sendSubmit({ valid, value });
 }
 
 function syncPdfField() {
