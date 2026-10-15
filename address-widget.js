@@ -610,14 +610,16 @@ function buildAddressObject() {
 }
 
 function validateBase(item) {
-  const cityRequired = item.source !== "prefill";
+  const needsValidation = item.source !== "prefill";
 
-  if (!item.street1 || (cityRequired && !item.city) || !item.state || !item.zip || !item.county) {
-    return "Please complete all required address fields.";
-  }
+  if(needsValidation) {
+    if (!item.street1 || !item.city || !item.state || !item.zip || !item.county) {
+      return "Please complete all required address fields.";
+    }
 
-  if (!/^\d{5}(?:-\d{4})?$/.test(item.zip)) {
-    return "Please enter a valid 5-digit ZIP code or ZIP+4.";
+    if (!/^\d{5}(?:-\d{4})?$/.test(item.zip)) {
+      return "Please enter a valid 5-digit ZIP code or ZIP+4.";
+    }
   }
 
   return "";
