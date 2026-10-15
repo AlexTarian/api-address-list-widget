@@ -1243,6 +1243,8 @@ function formatWorksiteForPdf(item) {
 }
 
 function syncWidgetValue() {
+  if (!addressWorkflowStarted) return;
+
   const valid = addresses.length > 0 &&
     addresses.every(item => !validateAddress(item));
 
