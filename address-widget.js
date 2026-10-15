@@ -610,7 +610,9 @@ function buildAddressObject() {
 }
 
 function validateBase(item) {
-  if (!item.street1 || !item.city || !item.state || !item.zip || !item.county) {
+  const cityRequired = item.source !== "prefill";
+
+  if (!item.street1 || (cityRequired && !item.city) || !item.state || !item.zip || !item.county) {
     return "Please complete all required address fields.";
   }
 
