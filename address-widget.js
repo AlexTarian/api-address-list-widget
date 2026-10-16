@@ -936,7 +936,7 @@ function renderAddresses() {
     fields.addressList.appendChild(empty);
 
     syncWidgetValue();
-    //syncPdfField();
+    syncPdfField();
     updateWidgetHeight();
     return;
   }
@@ -974,7 +974,7 @@ function renderAddresses() {
   });
 
   syncWidgetValue();
-  //syncPdfField();
+  syncPdfField();
   updateWidgetHeight();
 }
 
